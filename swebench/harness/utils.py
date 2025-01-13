@@ -10,10 +10,52 @@ from dotenv import load_dotenv
 from pathlib import Path
 from tqdm import tqdm
 from typing import cast
-from swebench.harness.constants import SWEbenchInstance, KEY_INSTANCE_ID
+from swebench.harness.constants import (
+    SWEbenchInstance,
+    KEY_INSTANCE_ID,
+    KEY_MODEL,
+    KEY_PREDICTION,
+)
 from unidiff import PatchSet
 
 load_dotenv()
+
+
+class EvaluationError(Exception):
+    def __init__(self, instance_id, message, logger):
+        super().__init__(message)
+        self.instance_id = instance_id
+        self.log_file = logger.log_file
+        self.logger = logger
+
+    def __str__(self):
+        log_msg = traceback.format_exc()
+        self.logger.info(log_msg)
+        return (
+            f"{self.instance_id}: {super().__str__()}\n"
+            f"Check ({self.log_file}) for more information."
+        )
+
+
+def get_predictions_from_file(predictions_path: str, dataset_name: str, split: str):
+    if predictions_path == "gold":
+        print("Using gold predictions - ignoring predictions_path")
+        dataset = load_swebench_dataset(dataset_name, split)
+        return [
+            {
+                KEY_INSTANCE_ID: datum[KEY_INSTANCE_ID],
+                KEY_PREDICTION: datum["patch"],
+                KEY_MODEL: "gold",
+            } for datum in dataset
+        ]
+    if predictions_path.endswith(".json"):
+        with open(predictions_path, "r") as f:
+            return json.load(f)
+    elif predictions_path.endswith(".jsonl"):
+        with open(predictions_path, "r") as f:
+            return [json.loads(line) for line in f]
+    else:
+        raise ValueError("Predictions path must be .json or .jsonl")
 
 
 def run_threadpool(func, payloads, max_workers):

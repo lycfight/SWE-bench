@@ -44,30 +44,24 @@ from swebench.harness.docker_build import (
     setup_logger,
 )
 from swebench.harness.grading import get_eval_report
+from swebench.harness.modal_eval import (
+    run_instances_modal,
+    validate_modal_credentials,
+)
 from swebench.harness.test_spec.test_spec import make_test_spec, TestSpec
-from swebench.harness.utils import load_swebench_dataset, str2bool, run_threadpool
+from swebench.harness.utils import (
+    EvaluationError,
+    load_swebench_dataset,
+    get_predictions_from_file,
+    run_threadpool,
+    str2bool,
+)
 
 GIT_APPLY_CMDS = [
-    "git apply --allow-empty -v",
     "git apply --verbose",
     "git apply --verbose --reject",
     "patch --batch --fuzz=5 -p1 -i",
 ]
-
-
-class EvaluationError(Exception):
-    def __init__(self, instance_id, message, logger):
-        super().__init__(message)
-        self.super_str = super().__str__()
-        self.instance_id = instance_id
-        self.log_file = logger.log_file
-        self.logger = logger
-
-    def __str__(self):
-        return (
-            f"Evaluation error for {self.instance_id}: {self.super_str}\n"
-            f"Check ({self.log_file}) for more information."
-        )
 
 
 def run_instance(
@@ -521,20 +515,6 @@ def make_run_report(
     return report_file
 
 
-def get_gold_predictions(dataset_name: str, split: str):
-    """
-    Get gold predictions for the given dataset and split.
-    """
-    dataset = load_swebench_dataset(dataset_name, split)
-    return [
-        {
-            KEY_INSTANCE_ID: datum[KEY_INSTANCE_ID],
-            KEY_PREDICTION: datum["patch"],
-            KEY_MODEL: "gold",
-        } for datum in dataset
-    ]
-
-
 def main(
         dataset_name: str,
         split: str,
@@ -549,6 +529,7 @@ def main(
         timeout: int,
         namespace: str | None,
         rewrite_reports: bool,
+        modal: bool,
         instance_image_tag: str = 'latest',
         report_dir: str = '.'
     ):
@@ -562,31 +543,40 @@ def main(
         if not report_dir.exists():
             report_dir.mkdir(parents=True)
 
-    if platform.system() == 'Linux':
-        resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
-    client = docker.from_env()
-
     if force_rebuild and namespace is not None:
         raise ValueError("Cannot force rebuild and use a namespace at the same time.")
 
     # load predictions as map of instance_id to prediction
-    if predictions_path == 'gold':
-        print("Using gold predictions - ignoring predictions_path")
-        predictions = get_gold_predictions(dataset_name, split)
-    else:
-        if predictions_path.endswith(".json"):
-            with open(predictions_path, "r") as f:
-                predictions = json.load(f)
-        elif predictions_path.endswith(".jsonl"):
-            with open(predictions_path, "r") as f:
-                predictions = [json.loads(line) for line in f]
-        else:
-            raise ValueError("Predictions path must be \"gold\", .json, or .jsonl")
+    predictions = get_predictions_from_file(predictions_path, dataset_name, split)
     predictions = {pred[KEY_INSTANCE_ID]: pred for pred in predictions}
+
+    if modal:
+        # run instances on Modal
+        if not dataset:
+            print("No instances to run.")
+        else:
+            validate_modal_credentials()
+            run_instances_modal(predictions, dataset, full_dataset, run_id, timeout)
+        return
 
     # get dataset from predictions
     dataset = get_dataset_from_preds(dataset_name, split, instance_ids, predictions, run_id, rewrite_reports)
     full_dataset = load_swebench_dataset(dataset_name, split, instance_ids)
+
+    if modal:
+        # run instances on Modal
+        if not dataset:
+            print("No instances to run.")
+        else:
+            validate_modal_credentials()
+            run_instances_modal(predictions, dataset, full_dataset, run_id, timeout)
+        return
+
+    # run instances locally
+    if platform.system() == 'Linux':
+        resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
+    client = docker.from_env()
+
     existing_images = list_images(client)
     print(f"Running {len(dataset)} unevaluated instances...")
     if not dataset:
@@ -619,99 +609,30 @@ if __name__ == "__main__":
         description="Run evaluation harness for the given dataset and predictions.",
         formatter_class=ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument(
-        "--dataset_name",
-        default="princeton-nlp/SWE-bench_Lite",
-        type=str,
-        help="Name of dataset or path to JSON file."
-    )
-    parser.add_argument(
-        "--split",
-        type=str,
-        default="test",
-        help="Split of the dataset",
-    )
-    parser.add_argument(
-        "--instance_ids",
-        nargs="+",
-        type=str,
-        help="Instance IDs to run (space separated)",
-    )
-    parser.add_argument(
-        "--predictions_path",
-        type=str,
-        help="Path to predictions file - if 'gold', uses gold predictions",
-        required=True,
-    )
-    parser.add_argument(
-        "--max_workers",
-        type=int,
-        default=4,
-        help="Maximum number of workers (should be <= 75%% of CPU cores)",
-    )
-    parser.add_argument(
-        "--open_file_limit",
-        type=int,
-        default=4096,
-        help="Open file limit",
-    )
-    parser.add_argument(
-        "--timeout",
-        type=int,
-        default=1_800,
-        help="Timeout (in seconds) for running tests for each instance",
-    )
-    parser.add_argument(
-        "--force_rebuild",
-        type=str2bool,
-        default=False,
-        help="Force rebuild of all images",
-    )
-    parser.add_argument(
-        "--cache_level",
-        type=str,
-        choices=["none", "base", "env", "instance"],
-        help="Cache level - remove images above this level",
-        default="env",
-    )
+
+    # Common args
+    parser.add_argument("--dataset_name", default="princeton-nlp/SWE-bench_Lite", type=str, help="Name of dataset or path to JSON file.")
+    parser.add_argument("--split", type=str, default="test", help="Split of the dataset")
+    parser.add_argument( "--instance_ids", nargs="+", type=str, help="Instance IDs to run (space separated)")
+    parser.add_argument("--predictions_path", type=str, help="Path to predictions file - if 'gold', uses gold predictions", required=True)
+
+    # Local execution args
+    parser.add_argument("--max_workers", type=int, default=4, help="Maximum number of workers (should be <= 75%% of CPU cores)")
+    parser.add_argument("--open_file_limit", type=int, default=4096, help="Open file limit")
+    parser.add_argument("--timeout", type=int, default=1_800, help="Timeout (in seconds) for running tests for each instance")
+    parser.add_argument("--force_rebuild", type=str2bool, default=False, help="Force rebuild of all images")
+    parser.add_argument("--cache_level", type=str, choices=["none", "base", "env", "instance"], help="Cache level - remove images above this level", default="env")
     # if clean is true then we remove all images that are above the cache level
     # if clean is false, we only remove images above the cache level if they don't already exist
-    parser.add_argument(
-        "--clean",
-        type=str2bool,
-        default=False,
-        help="Clean images above cache level",
-    )
-    parser.add_argument(
-        "--run_id",
-        type=str,
-        required=True,
-        help="Run ID - identifies the run",
-    )
-    parser.add_argument(
-        "--namespace",
-        type=str,
-        default=None,
-        help="Namespace for images",
-    )
-    parser.add_argument(
-        "--instance_image_tag",
-        type=str,
-        default='latest',
-        help="Instance image tag",
-    )
-    parser.add_argument(
-        "--rewrite_reports",
-        type=str2bool,
-        default=False,
-        help="Doesn't run new instances, only writes reports for instances with existing test outputs",
-    )
-    parser.add_argument(
-        "--report_dir",
-        type=str,
-        default=".",
-        help="Directory to write reports to",
-    )
-    args = parser.parse_args()
+    parser.add_argument("--clean", type=str2bool, default=False, help="Clean images above cache level")
+    parser.add_argument("--run_id", type=str, required=True, help="Run ID - identifies the run")
+    parser.add_argument("--namespace", type=str, default=None, help="Namespace for images")
+    parser.add_argument("--instance_image_tag", type=str, default='latest', help="Instance image tag")
+    parser.add_argument("--rewrite_reports", type=str2bool, default=False, help="Doesn't run new instances, only writes reports for instances with existing test outputs")
+    parser.add_argument("--report_dir", type=str, default=".", help="Directory to write reports to")
 
+    # Modal execution args
+    parser.add_argument("--modal", action="store_true", default=False, help="Run on Modal")
+
+    args = parser.parse_args()
     main(**vars(args))
