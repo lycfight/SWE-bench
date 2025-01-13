@@ -1,3 +1,4 @@
+import json
 import re
 
 from pathlib import Path
@@ -61,7 +62,9 @@ def get_test_cmds(instance) -> list:
 
 def get_download_img_commands(instance) -> list:
     cmds = []
-    for i in instance.get("image_assets", {}).get("test_patch", []):
+    image_assets = json.loads(instance["image_assets"]) \
+        if instance.get("image_assets") else {}
+    for i in image_assets.get("test_patch", []):
         folder = Path(i["path"]).parent
         cmds.append(f"mkdir -p {folder}")
         cmds.append(f"curl -o {i['path']} {i['url']}")
