@@ -623,7 +623,7 @@ if __name__ == "__main__":
     parser.add_argument("--report_dir", type=str, default=".", help="Directory to write reports to")
 
     # Modal execution args
-    parser.add_argument("--modal", action="store_true", default=False, help="Run on Modal")
+    parser.add_argument("--modal", type=str2bool, default=False, help="Run on Modal")
 
     args = parser.parse_args()
     main(**vars(args))
