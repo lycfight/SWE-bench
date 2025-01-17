@@ -30,6 +30,7 @@ Code and data for our ICLR 2024 paper <a href="http://swe-bench.github.io/paper.
 Please refer our [website](http://swe-bench.github.io) for the public leaderboard and the [change log](https://github.com/princeton-nlp/SWE-bench/blob/main/CHANGELOG.md) for information on the latest updates to the SWE-bench benchmark.
 
 ## 📰 News
+* **[Jan. 11, 2025]**: Thanks to [Modal](https://modal.com/), we've added a new evaluation mode that runs evaluations entirely on the cloud! See 🚀 Set Up on this page for more details.
 * **[Aug. 13, 2024]**: Introducing *SWE-bench Verified*! Part 2 of our collaboration with [OpenAI Preparedness](https://openai.com/preparedness/). A subset of 500 problems that real software engineers have confirmed are solvable. Check out more in the [report](https://openai.com/index/introducing-swe-bench-verified/)!
 * **[Jun. 27, 2024]**: We have an exciting update for SWE-bench - with support from [OpenAI's Preparedness](https://openai.com/preparedness/) team: We're moving to a fully containerized evaluation harness using Docker for more reproducible evaluations! Read more in our [report](https://github.com/princeton-nlp/SWE-bench/blob/main/docs/20240627_docker/README.md).
 * **[Apr. 2, 2024]**: We have released [SWE-agent](https://github.com/princeton-nlp/SWE-agent), which sets the state-of-the-art on the full SWE-bench test set! ([Tweet 🔗](https://twitter.com/jyangballin/status/1775114444370051582))
@@ -67,6 +68,20 @@ python -m swebench.harness.run_evaluation \
     --instance_ids sympy__sympy-20590 \
     --run_id validate-gold
 ```
+
+### 🌩️ Evaluation with Modal
+You can also run evaluations entirely on the cloud using [Modal](https://modal.com/) to avoid local setup and resource constraints:
+```bash
+python -m swebench.harness.run_evaluation \
+    --predictions_path gold \
+    --run_id validate-gold-modal \
+    --instance_ids sympy__sympy-20590 \
+    --modal true
+```
+This will execute the evaluation harness on Modal's cloud infrastructure, eliminating the need for local Docker setup and resource management.
+
+> [!NOTE]
+> Modal for SWE-bench Multimodal is currently experimental and may not be fully supported yet.
 
 ## 💽 Usage
 > [!WARNING]
