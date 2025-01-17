@@ -204,7 +204,7 @@ def get_resolution_status(report: dict[str, dict[str, Any]]) -> str:
         return ResolvedStatus.PARTIAL.value
     else:
         return ResolvedStatus.NO.value
-    
+
 
 def get_eval_report(
     test_spec: TestSpec,
