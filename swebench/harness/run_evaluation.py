@@ -467,7 +467,7 @@ def main(
 
     # clean images + make final report
     clean_images(client, existing_images, cache_level, clean)
-    make_run_report(predictions, full_dataset, run_id, client)
+    return make_run_report(predictions, full_dataset, run_id, client)
 
 
 if __name__ == "__main__":
