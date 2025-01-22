@@ -62,8 +62,12 @@ def get_test_cmds(instance) -> list:
 
 def get_download_img_commands(instance) -> list:
     cmds = []
-    image_assets = json.loads(instance["image_assets"]) \
-        if instance.get("image_assets") else {}
+    image_assets = {}
+    if "image_assets" in instance:
+        if isinstance(instance["image_assets"], str):
+            image_assets = json.loads(instance["image_assets"])
+        else:
+            image_assets = instance["image_assets"]
     for i in image_assets.get("test_patch", []):
         folder = Path(i["path"]).parent
         cmds.append(f"mkdir -p {folder}")
