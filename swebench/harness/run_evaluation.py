@@ -411,6 +411,13 @@ def main(
     """
     Run evaluation harness for the given dataset and predictions.
     """
+    if dataset_name == "princeton-nlp/SWE-bench_Multimodal" and split == "test":
+        print(
+            "⚠️ Local evaluation for the test split of SWE-bench Multimodal is not supported. "
+            "Please check out sb-cli (https://github.com/swe-bench/sb-cli/) for instructions on how to submit predictions."
+        )
+        return
+
     # set open file limit
     assert len(run_id) > 0, "Run ID must be provided"
     if report_dir is not None:
