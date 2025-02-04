@@ -26,14 +26,13 @@ python -m swebench.harness.run_evaluation \
     --dataset_name princeton-nlp/SWE-bench_Lite \
     --predictions_path <path_to_predictions> \
     --max_workers <num_workers> \
-    --run_id <run_id> \
-    --namespace swebench
+    --run_id <run_id>
     # use --predictions_path 'gold' to verify the gold patches
     # use --run_id to name the run, logs will be written to ./logs/run_evaluation/<run_id>
     # use --split to specify which split to evaluate on, usually `dev` or `test`
 ```
 
-You can run evaluation for the following (`dataset_name`, `--split`)
+You can run evaluation for the following (`dataset_name`, `split`)
 * `princeton-nlp/SWE-bench_Lite`, `test` (300 task instances)
 * `princeton-nlp/SWE-bench_Verified`, `test` (500)
 * `princeton-nlp/SWE-bench`, `dev` (225)
@@ -42,7 +41,7 @@ You can run evaluation for the following (`dataset_name`, `--split`)
 
 You *cannot* run evaluation on the `test` split of `princeton-nlp/SWE-bench_Multimodal` using this repository (517 instances).
 To encourage less intentional climbing of the leaderboard, we have intentionally made specifications for evaluating the test split private.
-You can submit to the leaderboard using 
+Use [sb-cli](https://github.com/swe-bench/sb-cli/) for SWE-bench Multimodal evaluation.
 
 ### 🌩️ Evaluation with Modal
 You can also run evaluations entirely on the cloud using [Modal](https://modal.com/) to avoid local setup and resource constraints:

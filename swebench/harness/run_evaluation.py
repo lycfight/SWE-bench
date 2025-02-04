@@ -249,7 +249,7 @@ def run_instances(
         max_workers: int,
         run_id: str,
         timeout: int,
-        namespace: str = None,
+        namespace: str = 'swebench',
         instance_image_tag: str = 'latest',
         rewrite_reports: bool = False,
     ):
@@ -499,7 +499,7 @@ if __name__ == "__main__":
     # if clean is false, we only remove images above the cache level if they don't already exist
     parser.add_argument("--clean", type=str2bool, default=False, help="Clean images above cache level")
     parser.add_argument("--run_id", type=str, required=True, help="Run ID - identifies the run")
-    parser.add_argument("--namespace", type=str, default=None, help="Namespace for images")
+    parser.add_argument("--namespace", type=str, default="swebench", help="Namespace for images")
     parser.add_argument("--instance_image_tag", type=str, default='latest', help="Instance image tag")
     parser.add_argument("--rewrite_reports", type=str2bool, default=False, help="Doesn't run new instances, only writes reports for instances with existing test outputs")
     parser.add_argument("--report_dir", type=str, default=".", help="Directory to write reports to")

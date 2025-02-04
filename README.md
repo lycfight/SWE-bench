@@ -6,7 +6,7 @@
 
 <div align="center">
 
- | [日本語](docs/README_JP.md) | [English](https://github.com/princeton-nlp/SWE-bench) | [中文简体](docs/README_CN.md) | [中文繁體](docs/README_TW.md) |
+ | [日本語](docs/README_JP.md) | [English](https://github.com/swe-bench/SWE-bench) | [中文简体](docs/README_CN.md) | [中文繁體](docs/README_TW.md) |
 
 </div>
 
@@ -27,14 +27,14 @@ Code and data for our ICLR 2024 paper <a href="http://swe-bench.github.io/paper.
     </a>
 </p>
 
-Please refer our [website](http://swe-bench.github.io) for the public leaderboard and the [change log](https://github.com/princeton-nlp/SWE-bench/blob/main/CHANGELOG.md) for information on the latest updates to the SWE-bench benchmark.
+Please refer our [website](http://swe-bench.github.io) for the public leaderboard and the [change log](https://github.com/swe-bench/SWE-bench/blob/main/CHANGELOG.md) for information on the latest updates to the SWE-bench benchmark.
 
 ## 📰 News
 * **[Jan. 13, 2025]**: We've integrated [SWE-bench Multimodal](https://swebench.github.io/multimodal) ([paper](https://arxiv.org/abs/2410.03859), [dataset](https://huggingface.co/datasets/princeton-nlp/SWE-bench_Multimodal)) into this repository! Unlike SWE-bench, we've kept evaluation for the test split *private*. Submit to the leaderboard using [sb-cli](https://github.com/swe-bench/sb-cli/tree/main), our new cloud-based evaluation tool.
-* **[Jan. 11, 2025]**: Thanks to [Modal](https://modal.com/), you can now run evaluations entirely on the cloud! See [here](https://github.com/princeton-nlp/SWE-bench/blob/main/assets/evaluation.md#-evaluation-with-modal) for more details.
+* **[Jan. 11, 2025]**: Thanks to [Modal](https://modal.com/), you can now run evaluations entirely on the cloud! See [here](https://github.com/swe-bench/SWE-bench/blob/main/assets/evaluation.md#%EF%B8%8F-evaluation-with-modal) for more details.
 * **[Aug. 13, 2024]**: Introducing *SWE-bench Verified*! Part 2 of our collaboration with [OpenAI Preparedness](https://openai.com/preparedness/). A subset of 500 problems that real software engineers have confirmed are solvable. Check out more in the [report](https://openai.com/index/introducing-swe-bench-verified/)!
-* **[Jun. 27, 2024]**: We have an exciting update for SWE-bench - with support from [OpenAI's Preparedness](https://openai.com/preparedness/) team: We're moving to a fully containerized evaluation harness using Docker for more reproducible evaluations! Read more in our [report](https://github.com/princeton-nlp/SWE-bench/blob/main/docs/20240627_docker/README.md).
-* **[Apr. 2, 2024]**: We have released [SWE-agent](https://github.com/princeton-nlp/SWE-agent), which sets the state-of-the-art on the full SWE-bench test set! ([Tweet 🔗](https://twitter.com/jyangballin/status/1775114444370051582))
+* **[Jun. 27, 2024]**: We have an exciting update for SWE-bench - with support from [OpenAI's Preparedness](https://openai.com/preparedness/) team: We're moving to a fully containerized evaluation harness using Docker for more reproducible evaluations! Read more in our [report](https://github.com/swe-bench/SWE-bench/blob/main/docs/20240627_docker/README.md).
+* **[Apr. 2, 2024]**: We have released [SWE-agent](https://github.com/SWE-agent/SWE-agent), which sets the state-of-the-art on the full SWE-bench test set! ([Tweet 🔗](https://twitter.com/jyangballin/status/1775114444370051582))
 * **[Jan. 16, 2024]**: SWE-bench has been accepted to ICLR 2024 as an oral presentation! ([OpenReview 🔗](https://openreview.net/forum?id=VTF8yNQM66))
 
 ## 👋 Overview
@@ -77,8 +77,7 @@ python -m swebench.harness.run_evaluation \
     --dataset_name princeton-nlp/SWE-bench_Lite \
     --predictions_path <path_to_predictions> \
     --max_workers <num_workers> \
-    --run_id <run_id> \
-    --namespace swebench
+    --run_id <run_id>
     # use --predictions_path 'gold' to verify the gold patches
     # use --run_id to name the evaluation run
 ```
@@ -104,12 +103,12 @@ python -m swebench.harness.run_evaluation --help
 See the [evaluation tutorial]((./assets/evaluation.md)) for the full rundown on datasets you can evaluate.
 If you're looking for non-local, cloud based evaluations, check out...
 * [sb-cli](https://github.com/swe-bench/sb-cli), our tool for running evaluations automatically on AWS, or...
-* Running SWE-bench evaluation on [Modal](https://modal.com/). Details [here](https://github.com/princeton-nlp/SWE-bench/blob/main/assets/evaluation.md#-evaluation-with-modal)
+* Running SWE-bench evaluation on [Modal](https://modal.com/). Details [here](https://github.com/swe-bench/SWE-bench/blob/main/assets/evaluation.md#%EF%B8%8F-evaluation-with-modal)
 
 Additionally, you can also:
 * [Train](https://github.com/swe-bench/SWE-bench/tree/main/swebench/inference/make_datasets) your own models on our pre-processed datasets.
-* Run [inference](https://github.com/princeton-nlp/SWE-bench/blob/main/swebench/inference/README.md) on existing models (both local and API models). The inference step is where you give the model a repo + issue and have it generate a fix.
-*  Run SWE-bench's [data collection procedure](https://github.com/princeton-nlp/SWE-bench/blob/main/swebench/collect/) ([tutorial](./assets/evaluation.md)) on your own repositories, to make new SWE-Bench tasks.
+* Run [inference](https://github.com/swe-bench/SWE-bench/blob/main/swebench/inference/README.md) on existing models (both local and API models). The inference step is where you give the model a repo + issue and have it generate a fix.
+*  Run SWE-bench's [data collection procedure](https://github.com/swe-bench/SWE-bench/blob/main/swebench/collect/) ([tutorial](./assets/evaluation.md)) on your own repositories, to make new SWE-Bench tasks.
 
 ## ⬇️ Downloads
 | Datasets | Models | RAG |

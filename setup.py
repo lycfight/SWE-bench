@@ -13,9 +13,9 @@ setuptools.setup(
     long_description_content_type='text/markdown',
     url='https://swebench.com',
     project_urls={
-        'Documentation': 'https://github.com/princeton-nlp/SWE-bench',
-        'Bug Reports': 'http://github.com/princeton-nlp/SWE-bench/issues',
-        'Source Code': 'http://github.com/princeton-nlp/SWE-bench',
+        'Documentation': 'https://github.com/swe-bench/SWE-bench',
+        'Bug Reports': 'http://github.com/swe-bench/SWE-bench/issues',
+        'Source Code': 'http://github.com/swe-bench/SWE-bench',
         'Website': 'https://swebench.com',
     },
     packages=setuptools.find_packages(),
