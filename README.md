@@ -100,7 +100,7 @@ To see the full list of arguments for the evaluation harness, run:
 python -m swebench.harness.run_evaluation --help
 ```
 
-See the [evaluation tutorial]((./assets/evaluation.md)) for the full rundown on datasets you can evaluate.
+See the [evaluation tutorial](./assets/evaluation.md) for the full rundown on datasets you can evaluate.
 If you're looking for non-local, cloud based evaluations, check out...
 * [sb-cli](https://github.com/swe-bench/sb-cli), our tool for running evaluations automatically on AWS, or...
 * Running SWE-bench evaluation on [Modal](https://modal.com/). Details [here](https://github.com/swe-bench/SWE-bench/blob/main/assets/evaluation.md#%EF%B8%8F-evaluation-with-modal)
