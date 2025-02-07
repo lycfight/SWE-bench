@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://swebench.com">
+  <a href="http://swe-bench.github.io">
     <img src="assets/figures/swellama_banner.svg" style="height: 10em" alt="Kawi the SWE-Llama" />
   </a>
 </p>
@@ -10,12 +10,7 @@
 
 </div>
 
-
----
 <p align="center">
-Code and data for our ICLR 2024 paper <a href="http://swe-bench.github.io/paper.pdf">SWE-bench: Can Language Models Resolve Real-World GitHub Issues?</a>
-    </br>
-    </br>
     <a href="https://www.python.org/">
         <img alt="Build" src="https://img.shields.io/badge/Python-3.8+-1f425f.svg?color=purple">
     </a>
@@ -27,7 +22,11 @@ Code and data for our ICLR 2024 paper <a href="http://swe-bench.github.io/paper.
     </a>
 </p>
 
-Please refer our [website](http://swe-bench.github.io) for the public leaderboard and the [change log](https://github.com/swe-bench/SWE-bench/blob/main/CHANGELOG.md) for information on the latest updates to the SWE-bench benchmark.
+---
+
+Code and data for the following works:
+* [ICLR 2025] <a href="https://arxiv.org/abs/2410.03859">SWE-bench Multimodal: Do AI Systems Generalize to Visual Software Domains?</a>
+* [ICLR 2024 Oral] <a href="https://arxiv.org/abs/2310.06770">SWE-bench: Can Language Models Resolve Real-World GitHub Issues?</a>
 
 ## 📰 News
 * **[Jan. 13, 2025]**: We've integrated [SWE-bench Multimodal](https://swebench.github.io/multimodal) ([paper](https://arxiv.org/abs/2410.03859), [dataset](https://huggingface.co/datasets/princeton-nlp/SWE-bench_Multimodal)) into this repository! Unlike SWE-bench, we've kept evaluation for the test split *private*. Submit to the leaderboard using [sb-cli](https://github.com/swe-bench/sb-cli/tree/main), our new cloud-based evaluation tool.
@@ -127,6 +126,7 @@ Contact person: [Carlos E. Jimenez](http://www.carlosejimenez.com/) and [John Ya
 
 ## ✍️ Citation
 If you find our work helpful, please use the following citations.
+
 ```
 @inproceedings{
     jimenez2024swebench,
@@ -135,6 +135,15 @@ If you find our work helpful, please use the following citations.
     booktitle={The Twelfth International Conference on Learning Representations},
     year={2024},
     url={https://openreview.net/forum?id=VTF8yNQM66}
+}
+
+@inproceedings{
+    yang2024swebenchmultimodal,
+    title={{SWE}-bench Multimodal: Do AI Systems Generalize to Visual Software Domains?},
+    author={John Yang and Carlos E. Jimenez and Alex L. Zhang and Kilian Lieret and Joyce Yang and Xindi Wu and Ori Press and Niklas Muennighoff and Gabriel Synnaeve and Karthik R. Narasimhan and Diyi Yang and Sida I. Wang and Ofir Press},
+    booktitle={The Thirteenth International Conference on Learning Representations},
+    year={2025},
+    url={https://openreview.net/forum?id=riTiq3i21b}
 }
 ```
 
