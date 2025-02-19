@@ -36,11 +36,11 @@ def get_dockerfile_base(platform, arch, language, **kwargs):
     )
 
 
-def get_dockerfile_env(platform, arch, language, **kwargs):
+def get_dockerfile_env(platform, arch, language, base_image_key, **kwargs):
     return _DOCKERFILE_ENV[language].format(
         platform=platform,
         arch=arch,
-        base_image_name=f"sweb.base.{language}.{arch}:latest",
+        base_image_key=base_image_key,
         **kwargs,
     )
 

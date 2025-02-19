@@ -71,7 +71,7 @@ WORKDIR /home/chromeuser
 USER root
 """
 
-_DOCKERFILE_ENV_JS = r"""FROM --platform={platform} {base_image_name}
+_DOCKERFILE_ENV_JS = r"""FROM --platform={platform} {base_image_key}
 
 ARG DEBIAN_FRONTEND=noninteractive
 ENV TZ=Etc/UTC

@@ -124,6 +124,7 @@ class TestSpec:
             self.platform,
             self.arch,
             self.language,
+            self.base_image_key,
             **{**DEFAULT_DOCKER_SPECS, **self.docker_specs},
         )
 
