@@ -1,5 +1,5 @@
 _DOCKERFILE_BASE_JS = r"""
-FROM --platform={platform} ubuntu:22.04
+FROM --platform={platform} ubuntu:{ubuntu_version}
 
 ARG DEBIAN_FRONTEND=noninteractive
 ENV TZ=Etc/UTC

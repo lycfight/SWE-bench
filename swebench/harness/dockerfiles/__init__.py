@@ -25,13 +25,21 @@ _DOCKERFILE_INSTANCE = {
     "js": _DOCKERFILE_INSTANCE_JS,
 }
 
+_DEFAULT_VERSIONS = {
+    "conda_version": "py311_23.11.0-2",
+    "ubuntu_version": "22.04",
+}
 
-def get_dockerfile_base(platform, arch, language):
+
+def get_dockerfile_base(platform, arch, language, **kwargs):
     if arch == "arm64":
         conda_arch = "aarch64"
     else:
         conda_arch = arch
-    return _DOCKERFILE_BASE[language].format(platform=platform, conda_arch=conda_arch)
+    # Combine kwargs into _DEFAULT_VERSIONS
+    return _DOCKERFILE_BASE[language].format(
+        platform=platform, conda_arch=conda_arch, **_DEFAULT_VERSIONS, **kwargs
+    )
 
 
 def get_dockerfile_env(platform, arch, language, **kwargs):
