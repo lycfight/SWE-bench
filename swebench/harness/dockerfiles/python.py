@@ -32,7 +32,7 @@ RUN conda config --append channels conda-forge
 RUN adduser --disabled-password --gecos 'dog' nonroot
 """
 
-_DOCKERFILE_ENV_PY = r"""FROM --platform={platform} sweb.base.py.{arch}:latest
+_DOCKERFILE_ENV_PY = r"""FROM --platform={platform} {base_image_name}
 
 COPY ./setup_env.sh /root/
 RUN sed -i -e 's/\r$//' /root/setup_env.sh

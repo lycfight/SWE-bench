@@ -25,11 +25,6 @@ _DOCKERFILE_INSTANCE = {
     "js": _DOCKERFILE_INSTANCE_JS,
 }
 
-_DEFAULT_VERSIONS = {
-    "conda_version": "py311_23.11.0-2",
-    "ubuntu_version": "22.04",
-}
-
 
 def get_dockerfile_base(platform, arch, language, **kwargs):
     if arch == "arm64":
@@ -37,12 +32,17 @@ def get_dockerfile_base(platform, arch, language, **kwargs):
     else:
         conda_arch = arch
     return _DOCKERFILE_BASE[language].format(
-        platform=platform, conda_arch=conda_arch, **{**_DEFAULT_VERSIONS, **kwargs}
+        platform=platform, conda_arch=conda_arch, **kwargs
     )
 
 
 def get_dockerfile_env(platform, arch, language, **kwargs):
-    return _DOCKERFILE_ENV[language].format(platform=platform, arch=arch, **kwargs)
+    return _DOCKERFILE_ENV[language].format(
+        platform=platform,
+        arch=arch,
+        base_image_name=f"sweb.base.{language}.{arch}:latest",
+        **kwargs,
+    )
 
 
 def get_dockerfile_instance(platform, language, env_image_name):

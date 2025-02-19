@@ -111,7 +111,12 @@ class TestSpec:
 
     @property
     def base_dockerfile(self):
-        return get_dockerfile_base(self.platform, self.arch, self.language)
+        return get_dockerfile_base(
+            self.platform,
+            self.arch,
+            self.language,
+            **{**DEFAULT_DOCKER_SPECS, **self.docker_specs},
+        )
 
     @property
     def env_dockerfile(self):

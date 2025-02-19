@@ -110,9 +110,11 @@ NON_TEST_EXTS = [
 ]
 SWE_BENCH_URL_RAW = "https://raw.githubusercontent.com/"
 DEFAULT_DOCKER_SPECS = {
-    "pnpm_version": "9.5.0",
+    "conda_version": "py311_23.11.0-2",
     "node_version": "21.6.2",
+    "pnpm_version": "9.5.0",
     "python_version": "3.9",
+    "ubuntu_version": "22.04",
 }
 FAIL_ONLY_REPOS = {
     "chartjs/Chart.js",
