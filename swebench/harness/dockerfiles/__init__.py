@@ -36,9 +36,8 @@ def get_dockerfile_base(platform, arch, language, **kwargs):
         conda_arch = "aarch64"
     else:
         conda_arch = arch
-    # Combine kwargs into _DEFAULT_VERSIONS
     return _DOCKERFILE_BASE[language].format(
-        platform=platform, conda_arch=conda_arch, **_DEFAULT_VERSIONS, **kwargs
+        platform=platform, conda_arch=conda_arch, **{**_DEFAULT_VERSIONS, **kwargs}
     )
 
 
