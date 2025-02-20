@@ -503,7 +503,6 @@ def main(
     client = docker.from_env()
 
     existing_images = list_images(client)
-    print(f"Running {len(dataset)} unevaluated instances...")
     if not dataset:
         print("No instances to run.")
     else:
