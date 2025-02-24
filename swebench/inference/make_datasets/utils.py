@@ -194,7 +194,7 @@ class AutoContextManager(ContextManager):
         repo_dir = os.path.join(self.root_dir, instance["repo"].replace("/", "__"))
         if not os.path.exists(repo_dir):
             repo_url = (
-                f"https://{token}@github.com/swe-bench/"
+                f"https://{token}@github.com/swe-bench-repos/"
                 + instance["repo"].replace("/", "__")
                 + ".git"
             )
