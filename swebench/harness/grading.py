@@ -74,7 +74,7 @@ def get_logs_eval(test_spec: TestSpec, log_fp: str) -> tuple[dict[str, str], boo
 
         # Get status map of evaluation results
         content = content.split(test_cmd)[-1]
-        return log_parser(content), True
+        return log_parser(content, test_spec), True
 
 
 def get_eval_tests_report(
