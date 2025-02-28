@@ -28,10 +28,7 @@ def test_passed(case: str, sm: dict[str, str]) -> bool:
 
 
 def test_failed(case: str, sm: dict[str, str]) -> bool:
-    return case not in sm or any(
-        sm[case] == status
-        for status in [TestStatus.FAILED.value, TestStatus.ERROR.value]
-    )
+    return case not in sm or sm[case] in [TestStatus.FAILED.value, TestStatus.ERROR.value]
 
 
 # MARK: Evaluation report functions
