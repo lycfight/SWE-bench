@@ -107,7 +107,8 @@ If you're looking for non-local, cloud based evaluations, check out...
 Additionally, you can also:
 * [Train](https://github.com/swe-bench/SWE-bench/tree/main/swebench/inference/make_datasets) your own models on our pre-processed datasets.
 * Run [inference](https://github.com/swe-bench/SWE-bench/blob/main/swebench/inference/README.md) on existing models (both local and API models). The inference step is where you give the model a repo + issue and have it generate a fix.
-*  Run SWE-bench's [data collection procedure](https://github.com/swe-bench/SWE-bench/blob/main/swebench/collect/) ([tutorial](assets/evaluation.md)) on your own repositories, to make new SWE-Bench tasks.
+*  Run SWE-bench's [data collection procedure](https://github.com/swe-bench/SWE-bench/blob/main/swebench/collect/) ([tutorial](assets/collection.md)) on your own repositories, to make new SWE-Bench tasks.
+    * ⚠️ We are temporarily pausing support for queries around creating SWE-bench instances. Please see the note in the tutorial.
 
 ## ⬇️ Downloads
 | Datasets | Models | RAG |
