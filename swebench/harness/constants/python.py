@@ -1460,6 +1460,7 @@ TEST_PYTEST_WO_DEPRECATION = (
 MAP_VERSION_TO_INSTALL_PLACEHOLDER = {
     "0.0": {
         "python": "3.9",
+        "packages": "requirements.txt",
         "pip_packages": [
             "pytest",
             "cython",
@@ -1481,7 +1482,7 @@ MAP_VERSION_TO_INSTALL_PLACEHOLDER = {
             "tomlkit",
             "pre-commit",
         ],
-        "install": "pip install --force-reinstall -e .; pip install -e .[test]; pip install -e .[testing]; pip install -e .[tests]; pip install -e .[dev]",
+        "install": "pip install --force-reinstall -e . || true; pip install -e .[test] || true; pip install -e .[testing] || true; pip install -e .[tests] || true; pip install -e .[dev] || true",
         "pre_install": ["apt update && apt install -y make gcc g++ pkg-config"],
         "test_cmd": TEST_PYTEST_WO_DEPRECATION,
     }
