@@ -171,5 +171,3 @@ data/repos/copies
 notebooks/
 *logs/
 gold.validate-gold.json
-uploaded_images.txt
-create_images_push.sh
