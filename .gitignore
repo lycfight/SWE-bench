@@ -170,3 +170,5 @@ cython_debug/
 data/repos/copies
 notebooks/
 *logs/
+gold.validate-gold.json
+uploaded_images.txt
