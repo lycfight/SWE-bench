@@ -128,7 +128,7 @@ FAIL_ONLY_REPOS = {
 
 # Constants - Aggregate Installation Specifiactions
 MAP_REPO_VERSION_TO_SPECS = defaultdict(
-    lambda: MAP_VERSION_TO_INSTALL_PLACEHOLDER,
+    lambda: SPECS_PLACEHOLDER,
     {**MAP_REPO_VERSION_TO_SPECS_JS, **MAP_REPO_VERSION_TO_SPECS_PY}
 )
 
@@ -144,6 +144,12 @@ MAP_REPO_TO_EXT = defaultdict(
         **{k: "py" for k in MAP_REPO_VERSION_TO_SPECS_PY.keys()},
     }
 )
+
+MAP_NAMESPACE_TO_SEPARATOR = {
+    "swebench": "1776",
+    "xingyaoww": "s",
+    "lycfight": "s"
+}
 
 LATEST = "latest"
 USE_X86 = USE_X86_PY

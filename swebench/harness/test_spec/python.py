@@ -68,15 +68,50 @@ def get_environment_yml(instance: SWEbenchInstance, env_name: str) -> str:
 
 @cache
 def get_requirements_by_commit(repo: str, commit: str) -> str:
-    lines = ""
     for req_path in MAP_REPO_TO_REQS_PATHS[repo]:
         reqs_url = posixpath.join(SWE_BENCH_URL_RAW, repo, commit, req_path)
         reqs = requests.get(reqs_url, headers=HEADERS)
         if reqs.status_code == 200:
-            lines = reqs.text
             break
     else:
-        return lines
+        # raise ValueError(
+        #     f"Could not find requirements.txt at paths {MAP_REPO_TO_REQS_PATHS[repo]} for repo {repo} at commit {commit}"
+        # )
+        return ""
+
+    lines = reqs.text
+    original_req = []
+    additional_reqs = []
+    req_dir = "/".join(req_path.split("/")[:-1])
+    exclude_line = lambda line: any(
+        [line.strip().startswith(x) for x in ["-e .", "#", ".[test"]]
+    )
+
+    for line in lines.split("\n"):
+        if line.strip().startswith("-r"):
+            # Handle recursive requirements
+            file_name = line[len("-r") :].strip()
+            reqs_url = os.path.join(
+                SWE_BENCH_URL_RAW,
+                repo,
+                commit,
+                req_dir,
+                file_name,
+            )
+            reqs = requests.get(reqs_url, headers=HEADERS)
+            if reqs.status_code == 200:
+                for line_extra in reqs.text.split("\n"):
+                    if not exclude_line(line_extra):
+                        additional_reqs.append(line_extra)
+        else:
+            if not exclude_line(line):
+                original_req.append(line)
+
+    # Combine all requirements into single text body
+    additional_reqs.append("\n".join(original_req))
+    all_reqs = "\n".join(additional_reqs)
+
+    return all_reqs
 
 
 def get_requirements(instance: SWEbenchInstance) -> str:
@@ -164,6 +199,27 @@ def make_repo_script_list_py(
     return setup_commands
 
 
+def replace_uninstallable_packages_requirements_txt(requirement_str: str) -> str:
+    """Replaces certain packages in a requirements.txt-like string.
+    For example, some packages have been yanked and we need to replace them with compatible alternatives.
+    """
+    replacements = {
+        # See https://github.com/princeton-nlp/SWE-bench/issues/199
+        # This package was sinced yanked, so we need to force pip
+        # to install it.
+        # "types-pkg_resources": "types-pkg-resources==0.1.3",
+    }
+    requirements = [req.strip() for req in requirement_str.split("\n") if req.strip()]
+    requirements_replaced = []
+    for requirement in requirements:
+        if requirement in replacements:
+            print(f"Replaced {requirement!r} with {replacements[requirement]!r} (replace_uninstallable_packages)")
+            requirements_replaced.append(replacements[requirement])
+        else:
+            requirements_replaced.append(requirement)
+    return "\n".join(requirements_replaced) + "\n"
+
+
 def make_env_script_list_py(instance, specs, env_name) -> list:
     """
     Creates the list of commands to set up the conda environment for testing.
@@ -181,11 +237,13 @@ def make_env_script_list_py(instance, specs, env_name) -> list:
         reqs_commands.append(cmd)
 
         # Install dependencies
-        reqs = get_requirements(instance)
+        reqs = replace_uninstallable_packages_requirements_txt(get_requirements(instance))
         path_to_reqs = "$HOME/requirements.txt"
         reqs_commands.append(
             f"cat <<'{HEREDOC_DELIMITER}' > {path_to_reqs}\n{reqs}\n{HEREDOC_DELIMITER}"
         )
+        if "env_patches" in specs:
+            reqs_commands += specs["env_patches"]
         cmd = f"conda activate {env_name} && python -m pip install -r {path_to_reqs}"
         reqs_commands.append(cmd)
         reqs_commands.append(f"rm {path_to_reqs}")
@@ -196,6 +254,8 @@ def make_env_script_list_py(instance, specs, env_name) -> list:
         reqs_commands.append(
             f"cat <<'{HEREDOC_DELIMITER}' > {path_to_reqs}\n{reqs}\n{HEREDOC_DELIMITER}"
         )
+        if "env_patches" in specs:
+            reqs_commands += specs["env_patches"]
         if "no_use_env" in specs and specs["no_use_env"]:
             # `conda create` based installation
             cmd = (
@@ -211,7 +271,10 @@ def make_env_script_list_py(instance, specs, env_name) -> list:
             cmd = f"conda env create --file {path_to_reqs}"
             reqs_commands.append(cmd)
 
-            cmd = f"conda activate {env_name} && conda install python={specs['python']} -y"
+            if 'python' in specs:
+                cmd = f"conda activate {env_name} && conda install python={specs['python']} -y"
+            else:
+                cmd = f"conda activate {env_name}"
             reqs_commands.append(cmd)
 
         # Remove environment.yml
@@ -231,6 +294,23 @@ def make_env_script_list_py(instance, specs, env_name) -> list:
     return reqs_commands
 
 
+def make_test_command(instance):
+    if instance['repo'] == "python/mypy":
+        pattern = r'\[case ([^\]]+)\]'
+        test_keys = re.findall(pattern, instance["test_patch"])
+        test_keys_or = " or ".join(test_keys)
+        test_command = MAP_REPO_VERSION_TO_SPECS[instance["repo"]][instance["version"]]["test_cmd"] + " " + f'"{test_keys_or}"'
+        return test_command
+    else:
+        test_command = " ".join(
+            [
+                MAP_REPO_VERSION_TO_SPECS[instance["repo"].lower()][instance["version"]]["test_cmd"],
+                *get_test_directives(instance),
+            ]
+        )
+        return test_command
+    
+
 def make_eval_script_list_py(
     instance, specs, env_name, repo_directory, base_commit, test_patch
 ) -> list:
@@ -244,14 +324,7 @@ def make_eval_script_list_py(
     apply_test_patch_command = (
         f"git apply -v - <<'{HEREDOC_DELIMITER}'\n{test_patch}\n{HEREDOC_DELIMITER}"
     )
-    test_command = " ".join(
-        [
-            MAP_REPO_VERSION_TO_SPECS[instance["repo"]][instance["version"]][
-                "test_cmd"
-            ],
-            *get_test_directives(instance),
-        ]
-    )
+    test_command = make_test_command(instance)
     eval_commands = [
         "source /opt/miniconda3/bin/activate",
         f"conda activate {env_name}",

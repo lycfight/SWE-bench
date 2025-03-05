@@ -287,3 +287,100 @@ MAP_REPO_TO_PARSER_PY = {
     "sphinx-doc/sphinx": parse_log_sphinx,
     "sympy/sympy": parse_log_sympy,
 }
+
+
+# SWE-Gym
+def parse_log_pytest_pydantic(log: str) -> dict[str, str]:
+    """
+    Parser for test logs generated with PyTest framework (Later Version)
+
+    Args:
+        log (str): log content
+    Returns:
+        dict: test case to test status mapping
+    """
+    test_status_map = {}
+    escapes = "".join([chr(char) for char in range(1, 32)])
+    for line in log.split("\n"):
+        line = re.sub(r"\[(\d+)m", "", line)
+        translator = str.maketrans("", "", escapes)
+        line = line.translate(translator)
+        # additionally to pytest v2 we remove the [...] from FAILED
+        line = re.sub(r"FAILED\s*\[.*?\]", "FAILED", line)
+        if "tests/test_main.py::test_model_post_init_supertype_private_attr" in line:
+            print(line)
+
+        if any([line.startswith(x.value) for x in TestStatus]):
+            if line.startswith(TestStatus.FAILED.value):
+                line = line.replace(" - ", " ")
+            test_case = line.split()
+            test_status_map[test_case[1]] = test_case[0]
+        # Support older pytest versions by checking if the line ends with the test status
+        elif any([line.endswith(x.value) for x in TestStatus]):
+            test_case = line.split()
+            test_status_map[test_case[0]] = test_case[1]
+    return test_status_map
+
+
+parse_log_mypy = parse_log_pytest
+parse_log_moto = parse_log_pytest
+parse_log_conan = parse_log_pytest
+MAP_REPO_TO_PARSER_PY.update({
+    "python/mypy": parse_log_mypy,
+    "getmoto/moto": parse_log_moto,
+    "conan-io/conan": parse_log_conan,
+})
+
+parse_log_modin = parse_log_pytest
+MAP_REPO_TO_PARSER_PY.update({
+    "modin-project/modin": parse_log_modin,
+})
+
+parse_log_monai = parse_log_pytest
+MAP_REPO_TO_PARSER_PY.update({
+    "Project-MONAI/MONAI": parse_log_monai,
+})
+
+parse_log_dvc = parse_log_pytest
+MAP_REPO_TO_PARSER_PY.update({
+    "iterative/dvc": parse_log_dvc,
+})
+
+parse_log_dask = parse_log_pytest
+MAP_REPO_TO_PARSER_PY.update({
+    "dask/dask": parse_log_dask,
+})
+
+parse_log_bokeh = parse_log_pytest
+MAP_REPO_TO_PARSER_PY.update({
+    "bokeh/bokeh": parse_log_bokeh,
+})
+
+parse_log_mne = parse_log_pytest
+MAP_REPO_TO_PARSER_PY.update({
+    "mne-tools/mne-python": parse_log_mne,
+})
+
+parse_log_hypothesis = parse_log_pytest
+MAP_REPO_TO_PARSER_PY.update({
+    "HypothesisWorks/hypothesis": parse_log_hypothesis,
+})
+
+parse_log_pydantic = parse_log_pytest_pydantic
+MAP_REPO_TO_PARSER_PY.update({
+    "pydantic/pydantic": parse_log_pydantic,
+})
+
+parse_log_pandas = parse_log_pytest
+MAP_REPO_TO_PARSER_PY.update({
+    "pandas-dev/pandas": parse_log_pandas
+})
+
+parse_log_hydra = parse_log_pytest
+MAP_REPO_TO_PARSER_PY.update({
+    "facebookresearch/hydra": parse_log_hydra
+})
+
+# All keys should be in lower case
+LOWER_MAP_REPO_TO_PARSER_PY = {k.lower(): v for k, v in MAP_REPO_TO_PARSER_PY.items()}
+MAP_REPO_TO_PARSER_PY = LOWER_MAP_REPO_TO_PARSER_PY
