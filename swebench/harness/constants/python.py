@@ -1893,12 +1893,6 @@ for k in ['0.1', '0.9', '0.10', '0.11', '0.12', '1.0', '1.1', '1.2']:
 MAP_REPO_VERSION_TO_SPECS_PY.update({"facebookresearch/hydra": SPECS_HYDRA})
 
 
-# All keys should be in lower case
-LOWER_MAP_REPO_VERSION_TO_SPECS_PY = {
-    k.lower(): v for k, v in MAP_REPO_VERSION_TO_SPECS_PY.items()
-}
-MAP_REPO_VERSION_TO_SPECS_PY = LOWER_MAP_REPO_VERSION_TO_SPECS_PY
-
 # SWE-bench-extra
 from collections import defaultdict
 

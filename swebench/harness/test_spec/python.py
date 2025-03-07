@@ -304,7 +304,7 @@ def make_test_command(instance):
     else:
         test_command = " ".join(
             [
-                MAP_REPO_VERSION_TO_SPECS[instance["repo"].lower()][instance["version"]]["test_cmd"],
+                MAP_REPO_VERSION_TO_SPECS[instance["repo"]][instance["version"]]["test_cmd"],
                 *get_test_directives(instance),
             ]
         )
