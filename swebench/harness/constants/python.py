@@ -1450,3 +1450,53 @@ USE_X86_PY = {
     "sympy__sympy-15222",
     "sympy__sympy-19201",
 }
+
+# SWE-bench-extra
+from collections import defaultdict
+
+TEST_PYTEST_WO_DEPRECATION = (
+    "pytest --no-header -rA --tb=no  -p no:cacheprovider -W ignore::DeprecationWarning"
+)
+
+SPECS_PLACEHOLDER = {
+    "0.0": {
+        "python": "3.9",
+        "packages": "requirements.txt",
+        "pip_packages": [
+            "pytest",
+            "cython",
+            "distro",
+            "pytest-cov",
+            "pytest-xdist",
+            "pytest-mock",
+            "pytest-asyncio",
+            "pytest-bdd",
+            "pytest-benchmark",
+            "pytest-randomly",
+            "responses",
+            "mock",
+            "hypothesis",
+            "freezegun",
+            "trustme",
+            "requests-mock",
+            "requests",
+            "tomlkit",
+            "pre-commit",
+        ],
+        "install": "pip install --force-reinstall -e . || true; pip install -e .[test] || true; pip install -e .[testing] || true; pip install -e .[tests] || true; pip install -e .[dev] || true",
+        "pre_install": ["apt update && apt install -y make gcc g++ pkg-config"],
+        "test_cmd": TEST_PYTEST_WO_DEPRECATION,
+    }
+}
+
+MAP_REPO_TO_REQS_PATHS_PLACEHOLDER = [
+    "requirements.txt",
+    "requirements-dev.txt",
+    "requirements-test.txt",
+    "requirements_test.txt",
+    "requirements_dev.txt",
+]
+
+MAP_REPO_TO_REQS_PATHS = defaultdict(
+    lambda: MAP_REPO_TO_REQS_PATHS_PLACEHOLDER, MAP_REPO_TO_REQS_PATHS
+)

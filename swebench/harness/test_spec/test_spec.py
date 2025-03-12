@@ -11,6 +11,7 @@ from swebench.harness.constants import (
     LATEST,
     MAP_REPO_TO_EXT,
     MAP_REPO_VERSION_TO_SPECS,
+    MAP_NAMESPACE_TO_SEPARATOR,
     USE_X86,
     SWEbenchInstance,
 )
@@ -97,7 +98,7 @@ class TestSpec:
     def instance_image_key(self):
         key = f"sweb.eval.{self.arch}.{self.instance_id.lower()}:{self.instance_image_tag}"
         if self.is_remote_image:
-            key = f"{self.namespace}/{key}".replace("__", "_1776_")
+            key = f"{self.namespace}/{key}".replace("__", f"_{MAP_NAMESPACE_TO_SEPARATOR[self.namespace]}_")
         return key
 
     @property

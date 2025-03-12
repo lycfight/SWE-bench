@@ -3,6 +3,7 @@ from pathlib import Path
 from swebench.harness.constants.javascript import *
 from swebench.harness.constants.python import *
 from typing import TypedDict
+from collections import defaultdict
 
 
 # Constants - Evaluation Log Directories
@@ -126,19 +127,27 @@ FAIL_ONLY_REPOS = {
 }
 
 # Constants - Aggregate Installation Specifiactions
-MAP_REPO_VERSION_TO_SPECS = {
-    **MAP_REPO_VERSION_TO_SPECS_JS,
-    **MAP_REPO_VERSION_TO_SPECS_PY,
-}
+MAP_REPO_VERSION_TO_SPECS = defaultdict(
+    lambda: SPECS_PLACEHOLDER,
+    {**MAP_REPO_VERSION_TO_SPECS_JS, **MAP_REPO_VERSION_TO_SPECS_PY}
+)
 
 MAP_REPO_TO_INSTALL = {
     **MAP_REPO_TO_INSTALL_JS,
     **MAP_REPO_TO_INSTALL_PY,
 }
 
-MAP_REPO_TO_EXT = {
-    **{k: "js" for k in MAP_REPO_VERSION_TO_SPECS_JS.keys()},
-    **{k: "py" for k in MAP_REPO_VERSION_TO_SPECS_PY.keys()},
+MAP_REPO_TO_EXT = defaultdict(
+    lambda: "py",
+    {
+        **{k: "js" for k in MAP_REPO_VERSION_TO_SPECS_JS.keys()},
+        **{k: "py" for k in MAP_REPO_VERSION_TO_SPECS_PY.keys()},
+    }
+)
+
+MAP_NAMESPACE_TO_SEPARATOR = {
+    "swebench": "1776",
+    "lycfight": "s"
 }
 
 LATEST = "latest"
