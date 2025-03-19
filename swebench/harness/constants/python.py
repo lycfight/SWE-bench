@@ -1459,12 +1459,11 @@ TEST_PYTEST_WO_DEPRECATION = (
 )
 
 SPECS_PLACEHOLDER = {
-    "0.0": {
+    "-1.0": {
         "python": "3.9",
         "packages": "requirements.txt",
         "pip_packages": [
             "pytest",
-            "cython",
             "distro",
             "pytest-cov",
             "pytest-xdist",
@@ -1482,6 +1481,9 @@ SPECS_PLACEHOLDER = {
             "requests",
             "tomlkit",
             "pre-commit",
+            "setuptools==65.7.0",
+            "pip==20.3.3",
+            '"cython<3.0.0"'
         ],
         "install": "pip install --force-reinstall -e . || true; pip install -e .[test] || true; pip install -e .[testing] || true; pip install -e .[tests] || true; pip install -e .[dev] || true",
         "pre_install": ["apt update && apt install -y make gcc g++ pkg-config"],
