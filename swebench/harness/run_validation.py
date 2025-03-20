@@ -2,25 +2,21 @@ from __future__ import annotations
 
 import docker
 import json
-import platform
+import resource
 import traceback
-
-if platform.system() == "Linux":
-    import resource
+from typing import Any
 
 from argparse import ArgumentParser
-from pathlib import Path, PurePosixPath
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+from tqdm import tqdm
 
 from swebench.harness.constants import (
     APPLY_PATCH_FAIL,
     APPLY_PATCH_PASS,
-    DOCKER_PATCH,
-    DOCKER_USER,
-    DOCKER_WORKDIR,
     INSTANCE_IMAGE_BUILD_DIR,
     KEY_INSTANCE_ID,
     RUN_EVALUATION_LOG_DIR,
-    UTF8,
 )
 from swebench.harness.docker_utils import (
     remove_image,
@@ -39,20 +35,28 @@ from swebench.harness.docker_build import (
     setup_logger,
 )
 from swebench.harness.test_spec.test_spec import make_test_spec, TestSpec
-from swebench.harness.utils import load_swebench_dataset, str2bool, EvaluationError, run_threadpool
-from swebench.harness.grading import get_eval_report
+from swebench.harness.utils import load_swebench_dataset, str2bool
+from swebench.harness.grading import get_logs_eval
 
-GIT_APPLY_CMDS = [
-    "git apply --verbose",
-    "git apply --verbose --reject",
-    "patch --batch --fuzz=5 -p1 -i",
-]
 
+class EvaluationError(Exception):
+    def __init__(self, instance_id, message, logger):
+        super().__init__(message)
+        self.super_str = super().__str__()
+        self.instance_id = instance_id
+        self.log_file = logger.log_file
+        self.logger = logger
+
+    def __str__(self):
+        return (
+            f"Evaluation error for {self.instance_id}: {self.super_str}\n"
+            f"Check ({self.log_file}) for more information."
+        )
 
 def get_validation_report(
     test_spec: TestSpec,
     prediction: dict[str, str],
-    test_log_path: str,
+    log_path: str,
     include_tests_status: bool,
 ) -> dict[str, Any]:
     """
@@ -60,31 +64,60 @@ def get_validation_report(
     and evaluation log.
 
     Args:
-        test_spec (TestSpec): test spec containing the instance details
-        prediction (dict): prediction containing the model patch
-        test_log_path (str): path to evaluation log
+        test_spec (dict): test spec containing keys "instance_id", "FAIL_TO_PASS", and "PASS_TO_PASS"
+        prediction (dict): prediction containing keys "instance_id", "model_name_or_path", and "model_patch"
+        log_path (str): path to evaluation log
         include_tests_status (bool): whether to include the status of each test in the returned report
     Returns:
         report (dict): report of metrics
     """
-    # Use the new function from grading module
-    return get_eval_report(
-        test_spec=test_spec,
-        prediction=prediction,
-        test_log_path=test_log_path,
-        include_tests_status=include_tests_status,
-    )
+    report_map = {}
+
+    instance_id = prediction[KEY_INSTANCE_ID]
+    if instance_id not in report_map:
+        report_map[instance_id] = {
+            "patch_is_None": False,
+            "patch_exists": False,
+            "patch_successfully_applied": False,
+            "resolved": False,
+        }
+
+    # Check if the model patch exists
+    if prediction["model_patch"] is None:
+        report_map[instance_id]["none"] = True
+        return report_map
+    report_map[instance_id]["patch_exists"] = True
+
+    # Get evaluation logs
+    eval_sm, found = get_logs_eval(test_spec, log_path)
+
+    if not found:
+        return report_map
+    report_map[instance_id]["patch_successfully_applied"] = True
+
+    from swebench.harness.constants import TestStatus
+    report = {
+        "PASS": [k for k, v in eval_sm.items() if v == TestStatus.PASSED.value],
+        "FAIL": [k for k, v in eval_sm.items() if v == TestStatus.FAILED.value],
+    }
+    if len(report["FAIL"]) == 0 and len(report["PASS"]) > 0:
+        report_map[instance_id]["resolved"] = True
+
+    if include_tests_status:
+        report_map[instance_id]["tests_status"] = report  # type: ignore
+    
+    return report_map
 
 
 def run_instance(
-    test_spec: TestSpec,
-    pred: dict,
-    rm_image: bool,
-    force_rebuild: bool,
-    client: docker.DockerClient,
-    run_id: str,
-    timeout: int | None = None,
-):
+        test_spec: TestSpec,
+        pred: dict,
+        rm_image: bool,
+        force_rebuild: bool,
+        client: docker.DockerClient,
+        run_id: str,
+        timeout: int | None = None,
+    ):
     """
     Run a single instance with the given prediction.
 
@@ -104,22 +137,21 @@ def run_instance(
     log_dir.mkdir(parents=True, exist_ok=True)
 
     # Link the image build dir in the log dir
-    if not test_spec.is_remote_image:
-        build_dir = INSTANCE_IMAGE_BUILD_DIR / test_spec.instance_image_key.replace(":", "__")
-        image_build_link = log_dir / "image_build_dir"
-        if not image_build_link.exists():
-            try:
-                # link the image build dir in the log dir
-                image_build_link.symlink_to(build_dir.absolute(), target_is_directory=True)
-            except:
-                # some error, idk why
-                pass
+    build_dir = INSTANCE_IMAGE_BUILD_DIR / test_spec.instance_image_key.replace(":", "__")
+    image_build_link = log_dir / "image_build_dir"
+    if not image_build_link.exists():
+        try:
+            # link the image build dir in the log dir
+            image_build_link.symlink_to(build_dir.absolute(), target_is_directory=True)
+        except:
+            # some error, idk why
+            pass
+    log_file = log_dir / "run_instance.log"
 
     # Set up report file + logger
     report_path = log_dir / "report.json"
     if report_path.exists():
         return instance_id, json.loads(report_path.read_text())
-    log_file = log_dir / "run_instance.log"
     logger = setup_logger(instance_id, log_file)
 
     # Run the instance
@@ -136,35 +168,38 @@ def run_instance(
         logger.info(
             f"Intermediate patch for {instance_id} written to {patch_file}, now applying to container..."
         )
-        copy_to_container(container, patch_file, PurePosixPath(DOCKER_PATCH))
+        copy_to_container(container, patch_file, Path("/tmp/patch.diff"))
 
         # Attempt to apply patch to container
-        applied_patch = False
-        for git_apply_cmd in GIT_APPLY_CMDS:
+        val = container.exec_run(
+            "git apply --allow-empty -v /tmp/patch.diff",
+            workdir="/testbed",
+            user="root",
+        )
+        if val.exit_code != 0:
+            logger.info(f"Failed to apply patch to container, trying again...")
+            
+            # try "patch --batch --fuzz=5 -p1 -i {patch_path}" to try again
             val = container.exec_run(
-                f"{git_apply_cmd} {DOCKER_PATCH}",
-                workdir=DOCKER_WORKDIR,
-                user=DOCKER_USER,
+                "patch --batch --fuzz=5 -p1 -i /tmp/patch.diff",
+                workdir="/testbed",
+                user="root",
             )
-            if val.exit_code == 0:
-                logger.info(f"{APPLY_PATCH_PASS}:\n{val.output.decode(UTF8)}")
-                applied_patch = True
-                break
+            if val.exit_code != 0:
+                logger.info(f"{APPLY_PATCH_FAIL}:\n{val.output.decode('utf-8')}")
+                raise EvaluationError(
+                    instance_id,
+                    f"{APPLY_PATCH_FAIL}:\n{val.output.decode('utf-8')}",
+                    logger,
+                )
             else:
-                logger.info(f"Failed to apply patch to container: {git_apply_cmd}")
-        if not applied_patch:
-            logger.info(f"{APPLY_PATCH_FAIL}:\n{val.output.decode(UTF8)}")
-            raise EvaluationError(
-                instance_id,
-                f"{APPLY_PATCH_FAIL}:\n{val.output.decode(UTF8)}",
-                logger,
-            )
+                logger.info(f"{APPLY_PATCH_PASS}:\n{val.output.decode('utf-8')}")
+        else:
+            logger.info(f"{APPLY_PATCH_PASS}:\n{val.output.decode('utf-8')}")
 
         # Get git diff before running eval script
         git_diff_output_before = (
-            container.exec_run("git -c core.fileMode=false diff", workdir=DOCKER_WORKDIR)
-            .output.decode(UTF8)
-            .strip()
+            container.exec_run("git diff", workdir="/testbed").output.decode("utf-8").strip()
         )
         logger.info(f"Git diff before:\n{git_diff_output_before}")
 
@@ -173,12 +208,12 @@ def run_instance(
         logger.info(
             f"Eval script for {instance_id} written to {eval_file}; copying to container..."
         )
-        copy_to_container(container, eval_file, PurePosixPath("/eval.sh"))
+        copy_to_container(container, eval_file, Path("/eval.sh"))
 
         # Run eval script, write output to logs
         test_output, timed_out, total_runtime = exec_run_with_timeout(container, "/bin/bash /eval.sh", timeout)
         test_output_path = log_dir / "test_output.txt"
-        logger.info(f"Test runtime: {total_runtime:_.2f} seconds")
+        logger.info(f'Test runtime: {total_runtime:_.2f} seconds')
         with open(test_output_path, "w") as f:
             f.write(test_output)
             logger.info(f"Test output for {instance_id} written to {test_output_path}")
@@ -190,11 +225,9 @@ def run_instance(
                     logger,
                 )
 
-        # Get git diff after running eval script (ignore permission changes)
+        # Get git diff after running eval script
         git_diff_output_after = (
-            container.exec_run("git -c core.fileMode=false diff", workdir=DOCKER_WORKDIR)
-            .output.decode(UTF8)
-            .strip()
+            container.exec_run("git diff", workdir="/testbed").output.decode("utf-8").strip()
         )
 
         # Check if git diff changed after running eval script
@@ -207,7 +240,7 @@ def run_instance(
         report = get_validation_report(
             test_spec=test_spec,
             prediction=pred,
-            test_log_path=test_output_path,
+            log_path=test_output_path,
             include_tests_status=True,
         )
         logger.info(
@@ -242,17 +275,15 @@ def run_instance(
 
 
 def run_instances(
-    predictions: dict,
-    instances: list,
-    cache_level: str,
-    clean: bool,
-    force_rebuild: bool,
-    max_workers: int,
-    run_id: str,
-    timeout: int,
-    namespace: str = None,
-    instance_image_tag: str = None,
-):
+        predictions: dict,
+        instances: list,
+        cache_level: str,
+        clean: bool,
+        force_rebuild: bool,
+        max_workers: int,
+        run_id: str,
+        timeout: int,
+    ):
     """
     Run all instances for the given predictions in parallel.
 
@@ -265,18 +296,9 @@ def run_instances(
         max_workers (int): Maximum number of workers
         run_id (str): Run ID
         timeout (int): Timeout for running tests
-        namespace (str): Namespace for docker images
-        instance_image_tag (str): Tag for instance images
     """
     client = docker.from_env()
-    test_specs = list(
-        map(
-            lambda instance: make_test_spec(
-                instance, namespace=namespace, instance_image_tag=instance_image_tag
-            ),
-            instances,
-        )
-    )
+    test_specs = list(map(make_test_spec, instances))
 
     # print number of existing instance images
     instance_image_ids = {x.instance_image_key for x in test_specs}
@@ -288,51 +310,70 @@ def run_instances(
         print(f"Found {len(existing_images)} existing instance images. Will reuse them.")
 
     # run instances in parallel
-    payloads = []
-    for test_spec in test_specs:
-        payloads.append(
-            (
-                test_spec,
-                predictions[test_spec.instance_id],
-                should_remove(
-                    test_spec.instance_image_key,
-                    cache_level,
-                    clean,
-                    existing_images,
-                ),
-                force_rebuild,
-                client,
-                run_id,
-                timeout,
-            )
-        )
-
-    # run instances in parallel
     print(f"Running {len(instances)} instances...")
-    run_threadpool(run_instance, payloads, max_workers)
+    with tqdm(total=len(instances), smoothing=0) as pbar:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Create a future for running each instance
+            futures = {
+                executor.submit(
+                    run_instance,
+                    test_spec,
+                    predictions[test_spec.instance_id],
+                    should_remove(
+                        test_spec.instance_image_key,
+                        cache_level,
+                        clean,
+                        existing_images,
+                    ),
+                    force_rebuild,
+                    client,
+                    run_id,
+                    timeout,
+                ): None
+                for test_spec in test_specs
+            }
+            # Wait for each future to complete
+            for future in as_completed(futures):
+                pbar.update(1)
+                try:
+                    # Update progress bar, check if instance ran successfully
+                    future.result()
+                except Exception as e:
+                    traceback.print_exc()
+                    continue
     print("All instances run.")
 
 
 def get_dataset_from_preds(
-    dataset_name: str,
-    split: str,
-    instance_ids: list,
-    predictions: dict,
-    run_id: str,
-    exclude_completed: bool = True
-):
+        dataset_name: str,
+        split: str,
+        instance_ids: list,
+        predictions: dict,
+        run_id: str,
+        exclude_completed: bool = True
+    ):
     """
     Return only instances that have predictions and are in the dataset.
     If instance_ids is provided, only return instances with those IDs.
     If exclude_completed is True, only return instances that have not been run yet.
+    Note: in this version, we will still keep the data point even if the patch is empty.
     """
     # load dataset
     dataset = load_swebench_dataset(dataset_name, split)
     dataset_ids = {i[KEY_INSTANCE_ID] for i in dataset}
 
     if instance_ids:
+        # check that all instance IDs are in the dataset
+        instance_ids = set(instance_ids)
+        if instance_ids - dataset_ids:
+            raise ValueError(
+                (
+                    "Some instance IDs not found in dataset!"
+                    f"\nMissing IDs:\n{' '.join(instance_ids - dataset_ids)}"
+                )
+            )
         # check that all instance IDs have predictions
-        missing_preds = set(instance_ids) - set(predictions.keys())
+        missing_preds = instance_ids - set(predictions.keys())
         if missing_preds:
             print(f"Warning: Missing predictions for {len(missing_preds)} instance IDs.")
     
@@ -345,7 +386,9 @@ def get_dataset_from_preds(
                 f"\nMissing IDs:\n{' '.join(prediction_ids - dataset_ids)}"
             )
         )
+
     if instance_ids:
+        # filter dataset to just the instance IDs
         dataset = [i for i in dataset if i[KEY_INSTANCE_ID] in instance_ids]
 
     # check which instance IDs have already been run
@@ -369,18 +412,6 @@ def get_dataset_from_preds(
         # filter dataset to only instances that have not been run
         print(f"{len(completed_ids)} instances already run, skipping...")
         dataset = [i for i in dataset if i[KEY_INSTANCE_ID] not in completed_ids]
-    
-    empty_patch_ids = {
-        k for k, v in predictions.items()
-        if v["model_patch"] == "" or v["model_patch"] is None
-    }
-
-    # filter dataset to only instances with predictions
-    dataset = [
-        i for i in dataset
-        if i[KEY_INSTANCE_ID] in prediction_ids
-        and i[KEY_INSTANCE_ID] not in empty_patch_ids
-    ]
     return dataset
 
 
@@ -411,10 +442,7 @@ def get_empty_predictions(dataset_name: str, split: str):
     ]
 
 def delete_instance_container(client, dataset):
-    """
-    Delete all containers for the given dataset.
-    """
-    instance_ids = [dp[KEY_INSTANCE_ID] for dp in dataset]
+    instance_ids = [dp['instance_id'] for dp in dataset]
     container_names = set([f"sweb.eval.{instance_id}.test" for instance_id in instance_ids])
     container_list = client.containers.list(all=True)
     for container in container_list:
@@ -423,34 +451,27 @@ def delete_instance_container(client, dataset):
 
 
 def main(
-    dataset_name: str,
-    split: str,
-    instance_ids: list,
-    max_workers: int,
-    force_rebuild: bool,
-    cache_level: str,
-    clean: bool,
-    open_file_limit: int,
-    run_id: str,
-    timeout: int,
-    namespace: str = None,
-    instance_image_tag: str = None,
-):
+        dataset_name: str,
+        split: str,
+        instance_ids: list,
+        max_workers: int,
+        force_rebuild: bool,
+        cache_level: str,
+        clean: bool,
+        open_file_limit: int,
+        run_id: str,
+        timeout: int,
+    ):
     """
     Run evaluation harness for the given dataset and predictions.
     """
-    # Check system
-    if platform.system() == "Linux":
-        resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
-    
-    # Validate inputs
+    # set open file limit
     assert len(run_id) > 0, "Run ID must be provided"
-    
-    # Initialize Docker client
+    resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
     client = docker.from_env()
 
     # load predictions as map of instance_id to prediction
-    print("Using gold predictions")
+    print("Using gold predictions - ignoring predictions_path")
     predictions = get_gold_predictions(dataset_name, split)
     predictions = {pred[KEY_INSTANCE_ID]: pred for pred in predictions}
 
@@ -465,12 +486,9 @@ def main(
         # build environment images + run instances
         build_env_images(client, dataset, force_rebuild, max_workers)
         # this time w/ golden predictions (patch)
-        run_instances(
-            predictions, dataset, cache_level, clean, force_rebuild, 
-            max_workers, run_id, timeout, namespace, instance_image_tag
-        )
+        run_instances(predictions, dataset, cache_level, clean, force_rebuild, max_workers, run_id, timeout)
 
-    # --- run empty predictions ---
+    # # --- run empty predictions ---
     print("Using empty predictions")
     empty_predictions = get_empty_predictions(dataset_name, split)
     empty_predictions = {pred[KEY_INSTANCE_ID]: pred for pred in empty_predictions}
@@ -478,12 +496,9 @@ def main(
 
     # this will remove the container in the golden run
     delete_instance_container(client, empty_dataset)
-    run_instances(
-        empty_predictions, empty_dataset, cache_level, clean, force_rebuild, 
-        max_workers, run_id, timeout, namespace, instance_image_tag
-    )
+    run_instances(empty_predictions, empty_dataset, cache_level, clean, force_rebuild, max_workers, run_id, timeout)
 
-    # clean images
+    # clean images + make final report
     clean_images(client, existing_images, cache_level, clean)
 
 if __name__ == "__main__":
@@ -506,11 +521,11 @@ if __name__ == "__main__":
         help="Cache level - remove images above this level",
         default="env",
     )
+    # if clean is true then we remove all images that are above the cache level
+    # if clean is false, we only remove images above the cache level if they don't already exist
     parser.add_argument(
         "--clean", type=str2bool, default=False, help="Clean images above cache level"
     )
     parser.add_argument("--run_id", type=str, required=True, help="Run ID - identifies the run")
-    parser.add_argument("--namespace", type=str, default=None, help="Namespace for images")
-    parser.add_argument("--instance_image_tag", type=str, default=None, help="Instance image tag")
     args = parser.parse_args()
     main(**vars(args))
