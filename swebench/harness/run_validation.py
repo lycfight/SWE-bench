@@ -16,7 +16,7 @@ from swebench.harness.constants import (
     APPLY_PATCH_PASS,
     INSTANCE_IMAGE_BUILD_DIR,
     KEY_INSTANCE_ID,
-    RUN_EVALUATION_LOG_DIR,
+    RUN_VALIDATION_LOG_DIR,
 )
 from swebench.harness.docker_utils import (
     remove_image,
@@ -116,6 +116,8 @@ def run_instance(
         force_rebuild: bool,
         client: docker.DockerClient,
         run_id: str,
+        push_image: bool,
+        username: str,
         timeout: int | None = None,
     ):
     """
@@ -133,7 +135,7 @@ def run_instance(
     # Set up logging directory
     instance_id = test_spec.instance_id
     model_name_or_path = pred.get("model_name_or_path", "None").replace("/", "__")
-    log_dir = RUN_EVALUATION_LOG_DIR / run_id / model_name_or_path / instance_id
+    log_dir = RUN_VALIDATION_LOG_DIR / run_id / model_name_or_path / instance_id
     log_dir.mkdir(parents=True, exist_ok=True)
 
     # Link the image build dir in the log dir
@@ -268,20 +270,78 @@ def run_instance(
     finally:
         # Remove instance container + image, close logger
         cleanup_container(client, container, logger)
+            # empty prediction完成后，如果需要则推送镜像
+        if push_image:
+            try:
+                new_name = f"{username}/{test_spec.instance_image_key.replace('__', '_s_')}"
+                # 使用docker client进行tag和push操作
+                client.images.get(test_spec.instance_image_key).tag(new_name)
+                client.images.push(new_name)
+                logger.info(f"Pushed image: {new_name}")
+            except Exception as e:
+                logger.error(f"Error pushing image: {e}")
         if rm_image:
             remove_image(client, test_spec.instance_image_key, logger)
         close_logger(logger)
     return
 
 
+def run_instance_pair(
+        gold_test_spec: TestSpec,
+        empty_test_spec: TestSpec,
+        gold_pred: dict,
+        empty_pred: dict,
+        rm_image: bool,
+        force_rebuild: bool,
+        client: docker.DockerClient,
+        run_id: str,
+        push_image: bool,
+        username: str,
+        timeout: int | None = None,
+    ):
+    """
+    Run gold and empty predictions for a single instance in sequence.
+    Only push and remove image after empty prediction is complete.
+    """
+    # 先运行gold prediction，不删除镜像
+    run_instance(
+        gold_test_spec,
+        gold_pred,
+        rm_image=False,  # 不删除镜像
+        force_rebuild=force_rebuild,
+        client=client,
+        run_id=run_id,
+        push_image=False,
+        username=username,
+        timeout=timeout,
+    )
+
+    # 运行empty prediction
+    run_instance(
+        empty_test_spec,
+        empty_pred,
+        rm_image=rm_image,  # 删除镜像
+        force_rebuild=force_rebuild,
+        client=client,
+        run_id=run_id,
+        push_image=push_image,
+        username=username,
+        timeout=timeout,
+    )
+
+        
 def run_instances(
-        predictions: dict,
-        instances: list,
+        gold_predictions: dict,
+        empty_predictions: dict,
+        gold_instances: list,
+        empty_instances: list,
         cache_level: str,
         clean: bool,
         force_rebuild: bool,
         max_workers: int,
         run_id: str,
+        push_image: bool,
+        username: str,
         timeout: int,
     ):
     """
@@ -296,31 +356,37 @@ def run_instances(
         max_workers (int): Maximum number of workers
         run_id (str): Run ID
         timeout (int): Timeout for running tests
+        push_image (bool): Whether to push images to Docker Hub
+        username (str): Docker Hub username
+        timeout (int): Timeout for running tests
     """
     client = docker.from_env()
-    test_specs = list(map(make_test_spec, instances))
+    gold_test_specs = list(map(make_test_spec, gold_instances))
+    empty_test_specs = list(map(make_test_spec, empty_instances))
 
     # print number of existing instance images
-    instance_image_ids = {x.instance_image_key for x in test_specs}
+    gold_instance_image_ids = {x.instance_image_key for x in gold_test_specs}
     existing_images = {
         tag for i in client.images.list(all=True)
-        for tag in i.tags if tag in instance_image_ids
+        for tag in i.tags if tag in gold_instance_image_ids
     }
     if not force_rebuild and len(existing_images):
         print(f"Found {len(existing_images)} existing instance images. Will reuse them.")
 
     # run instances in parallel
-    print(f"Running {len(instances)} instances...")
-    with tqdm(total=len(instances), smoothing=0) as pbar:
+    print(f"Running {len(gold_instances)} instances...")
+    with tqdm(total=len(gold_instances), smoothing=0) as pbar:
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Create a future for running each instance
             futures = {
                 executor.submit(
-                    run_instance,
-                    test_spec,
-                    predictions[test_spec.instance_id],
+                    run_instance_pair,
+                    gold_test_spec,
+                    empty_test_spec,
+                    gold_predictions[gold_test_spec.instance_id],
+                    empty_predictions[empty_test_spec.instance_id],
                     should_remove(
-                        test_spec.instance_image_key,
+                        empty_test_spec.instance_image_key,
                         cache_level,
                         clean,
                         existing_images,
@@ -328,9 +394,11 @@ def run_instances(
                     force_rebuild,
                     client,
                     run_id,
+                    push_image,
+                    username,
                     timeout,
                 ): None
-                for test_spec in test_specs
+                for gold_test_spec, empty_test_spec in zip(gold_test_specs, empty_test_specs)
             }
             # Wait for each future to complete
             for future in as_completed(futures):
@@ -399,7 +467,7 @@ def get_dataset_from_preds(
             continue
         prediction = predictions[instance[KEY_INSTANCE_ID]]
         report_file = (
-            RUN_EVALUATION_LOG_DIR
+            RUN_VALIDATION_LOG_DIR
             / run_id
             / prediction["model_name_or_path"].replace("/", "__")
             / prediction[KEY_INSTANCE_ID]
@@ -428,6 +496,7 @@ def get_gold_predictions(dataset_name: str, split: str):
         } for datum in dataset
     ]
 
+
 def get_empty_predictions(dataset_name: str, split: str):
     """
     Get empty predictions for the given dataset and split.
@@ -441,14 +510,6 @@ def get_empty_predictions(dataset_name: str, split: str):
         } for datum in dataset
     ]
 
-def delete_instance_container(client, dataset):
-    instance_ids = [dp['instance_id'] for dp in dataset]
-    container_names = set([f"sweb.eval.{instance_id}.test" for instance_id in instance_ids])
-    container_list = client.containers.list(all=True)
-    for container in container_list:
-        if container.name in container_names:
-            container.remove(force=True)
-
 
 def main(
         dataset_name: str,
@@ -460,6 +521,8 @@ def main(
         clean: bool,
         open_file_limit: int,
         run_id: str,
+        push_image: bool,
+        username: str,
         timeout: int,
     ):
     """
@@ -471,22 +534,11 @@ def main(
     client = docker.from_env()
 
     # load predictions as map of instance_id to prediction
-    print("Using gold predictions - ignoring predictions_path")
+    print("Using gold predictions")
     predictions = get_gold_predictions(dataset_name, split)
     predictions = {pred[KEY_INSTANCE_ID]: pred for pred in predictions}
-
     # get dataset from predictions
     dataset = get_dataset_from_preds(dataset_name, split, instance_ids, predictions, run_id)
-    existing_images = list_images(client)
-    delete_instance_container(client, dataset)
-    print(f"Running {len(dataset)} unevaluated instances...")
-    if not dataset:
-        print("No instances to run.")
-    else:
-        # build environment images + run instances
-        build_env_images(client, dataset, force_rebuild, max_workers)
-        # this time w/ golden predictions (patch)
-        run_instances(predictions, dataset, cache_level, clean, force_rebuild, max_workers, run_id, timeout)
 
     # # --- run empty predictions ---
     print("Using empty predictions")
@@ -494,9 +546,14 @@ def main(
     empty_predictions = {pred[KEY_INSTANCE_ID]: pred for pred in empty_predictions}
     empty_dataset = get_dataset_from_preds(dataset_name, split, instance_ids, empty_predictions, run_id)
 
-    # this will remove the container in the golden run
-    delete_instance_container(client, empty_dataset)
-    run_instances(empty_predictions, empty_dataset, cache_level, clean, force_rebuild, max_workers, run_id, timeout)
+    existing_images = list_images(client)
+    print(f"Running {len(dataset)} unevaluated instances...")
+    if not dataset:
+        print("No instances to run.")
+    else:
+        # build environment images + run instances
+        build_env_images(client, dataset, force_rebuild, max_workers)
+    run_instances(predictions, empty_predictions, dataset, empty_dataset, cache_level, clean, force_rebuild, max_workers, run_id, push_image, username, timeout)
 
     # clean images + make final report
     clean_images(client, existing_images, cache_level, clean)
@@ -524,8 +581,14 @@ if __name__ == "__main__":
     # if clean is true then we remove all images that are above the cache level
     # if clean is false, we only remove images above the cache level if they don't already exist
     parser.add_argument(
-        "--clean", type=str2bool, default=False, help="Clean images above cache level"
+        "--clean", type=str2bool, default=True, help="Clean images above cache level"
     )
     parser.add_argument("--run_id", type=str, required=True, help="Run ID - identifies the run")
+    parser.add_argument(
+        "--push_image", type=str2bool, default=True, help="Push images to Docker Hub before removing them"
+    )
+    parser.add_argument(
+        "--username", type=str, default="lycfight", help="Docker Hub username for pushing images"
+    )
     args = parser.parse_args()
     main(**vars(args))
