@@ -1476,7 +1476,7 @@ SPECS_PEFT = {
 MAP_REPO_VERSION_TO_SPECS_PY.update({"huggingface/peft": SPECS_PEFT})
 
 SPECS_PLACEHOLDER = {
-    "0.0": {
+    "-1.0": {
         "python": "3.9",
         "packages": "requirements.txt",
         "pip_packages": [
