@@ -1451,15 +1451,32 @@ USE_X86_PY = {
     "sympy__sympy-19201",
 }
 
-# SWE-bench-extra
+# SWE-Fixer-Ours
 from collections import defaultdict
 
 TEST_PYTEST_WO_DEPRECATION = (
     "pytest --no-header -rA --tb=no  -p no:cacheprovider -W ignore::DeprecationWarning"
 )
 
+SPECS_PEFT = {
+    k: {
+        "python": "3.9",
+        "install": "pip install -e .[test]; pip install --upgrade diffusers",
+        "pip_packages": [
+            "pytest",
+            "pre-commit",
+            ],
+        "test_cmd": TEST_PYTEST_WO_DEPRECATION,
+    }
+    for k in [
+        "-1.0",
+    ]
+}
+
+MAP_REPO_VERSION_TO_SPECS_PY.update({"huggingface/peft": SPECS_PEFT})
+
 SPECS_PLACEHOLDER = {
-    "-1.0": {
+    "0.0": {
         "python": "3.9",
         "packages": "requirements.txt",
         "pip_packages": [
