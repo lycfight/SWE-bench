@@ -81,6 +81,7 @@ def build_image(
     platform: str,
     client: docker.DockerClient,
     build_dir: Path,
+    logger: logging.Logger | None = None,
     nocache: bool = False,
 ):
     """
@@ -96,7 +97,10 @@ def build_image(
         nocache (bool): Whether to use the cache when building
     """
     # Create a logger for the build process
-    logger = setup_logger(image_name, build_dir / "build_image.log")
+    new_logger = False
+    if logger is None:
+        new_logger = True
+        logger = setup_logger(image_name, build_dir / "build_image.log")
     logger.info(
         f"Building image {image_name}\n"
         f"Using dockerfile:\n{dockerfile}\n"
@@ -159,7 +163,8 @@ def build_image(
         logger.error(f"Error building image {image_name}: {e}")
         raise BuildImageError(image_name, str(e), logger) from e
     finally:
-        close_logger(logger)  # functions that create loggers should close them
+        if new_logger:
+            close_logger(logger)  # functions that create loggers should close them
 
 
 def build_base_images(
@@ -301,6 +306,67 @@ def build_env_images(
 
     # Return the list of (un)successfuly built images
     return successful, failed
+
+
+def build_env_image(
+    test_spec: TestSpec,
+    client: docker.DockerClient,
+    logger: logging.Logger | None,
+    nocache: bool,
+):
+    """
+    Builds a single environment image if it does not already exist.
+
+    Args:
+        test_spec (TestSpec): Test spec to build the environment image for
+        client (docker.DockerClient): Docker client to use for building the image
+        logger (logging.Logger): Logger to use for logging the build process
+        nocache (bool): Whether to use the cache when building
+    """
+    # Set up logging for the build process
+    build_dir = ENV_IMAGE_BUILD_DIR / test_spec.env_image_key.replace(":", "__")
+    new_logger = False
+    if logger is None:
+        new_logger = True
+        logger = setup_logger(test_spec.env_image_key, build_dir / "build_image.log")
+
+    try:
+        # Check if the base image exists
+        base_image = client.images.get(test_spec.base_image_key)
+    except docker.errors.ImageNotFound as e:
+        raise BuildImageError(
+            test_spec.env_image_key,
+            f"Base image {test_spec.base_image_key} not found for {test_spec.env_image_key}",
+            logger,
+        ) from e
+
+    # Check if the environment image already exists
+    image_exists = False
+    try:
+        client.images.get(test_spec.env_image_key)
+        image_exists = True
+    except docker.errors.ImageNotFound:
+        pass
+
+    if not image_exists:
+        logger.info(f"Base image found, building environment image {test_spec.env_image_key} for {test_spec.instance_id}")
+        build_image(
+            image_name=test_spec.env_image_key,
+            setup_scripts={
+                "setup_env.sh": test_spec.setup_env_script
+            },
+            dockerfile=test_spec.env_dockerfile,
+            platform=test_spec.platform,
+            client=client,
+            build_dir=build_dir,
+            logger=logger,
+            nocache=nocache,
+        )
+    else:
+        logger.info(f"Environment image {test_spec.env_image_key} for {test_spec.instance_id} already exists, skipping build.")
+
+    if new_logger:
+        close_logger(logger)
 
 
 def build_instance_images(

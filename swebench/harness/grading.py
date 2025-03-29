@@ -278,3 +278,58 @@ def get_eval_report(
         report_map[instance_id]["tests_status"] = report  # type: ignore
 
     return report_map
+
+
+def get_valid_report(
+    test_spec: TestSpec,
+    prediction: dict[str, str],
+    test_log_path: str,
+    include_tests_status: bool,
+) -> dict[str, Any]:
+    """
+    Generate a report of model validation results from a prediction, task instance,
+    and validation log.
+
+    Args:
+        test_spec (dict): test spec containing keys "instance_id", "FAIL_TO_PASS", and "PASS_TO_PASS"
+        prediction (dict): prediction containing keys "instance_id", "model_name_or_path", and "model_patch"
+        test_log_path (str): path to validation log
+        include_tests_status (bool): whether to include the status of each test in the returned report
+    Returns:
+        report (dict): report of metrics
+    """
+    report_map = {}
+
+    instance_id = prediction[KEY_INSTANCE_ID]
+    if instance_id not in report_map:
+        report_map[instance_id] = {
+            "patch_is_None": False,
+            "patch_exists": False,
+            "patch_successfully_applied": False,
+            "resolved": False,
+        }
+
+    # Check if the model patch exists
+    if prediction["model_patch"] is None:
+        report_map[instance_id]["none"] = True
+        return report_map
+    report_map[instance_id]["patch_exists"] = True
+
+    # Get validation logs
+    eval_status_map, found = get_logs_eval(test_spec, test_log_path)
+
+    if not found:
+        return report_map
+    report_map[instance_id]["patch_successfully_applied"] = True
+
+    report = {
+        "PASS": [k for k, v in eval_status_map.items() if v == TestStatus.PASSED.value],
+        "FAIL": [k for k, v in eval_status_map.items() if v == TestStatus.FAILED.value],
+    }
+    if len(report["FAIL"]) == 0 and len(report["PASS"]) > 0:
+        report_map[instance_id]["resolved"] = True
+
+    if include_tests_status:
+        report_map[instance_id]["tests_status"] = report  # type: ignore
+    
+    return report_map
