@@ -270,7 +270,7 @@ def run_gold_and_empty_instance(
     rewrite_reports: bool = False,
 ):          
     # build environment image
-    build_env_image(test_spec, client, None, False)
+    build_env_image(test_spec, client, timeout, None, False)
     # run gold instance
     run_instance(test_spec, gold_pred, rm_image, force_rebuild, client, run_id, timeout, rewrite_reports)
     # run empty instance
@@ -586,7 +586,7 @@ if __name__ == "__main__":
         type=str,
         choices=["none", "base", "env", "instance"],
         help="Cache level - remove images above this level",
-        default="env",
+        default="instance",
     )
     # if clean is true then we remove all images that are above the cache level
     # if clean is false, we only remove images above the cache level if they don't already exist

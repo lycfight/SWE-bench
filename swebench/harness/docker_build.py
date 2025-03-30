@@ -81,6 +81,7 @@ def build_image(
     platform: str,
     client: docker.DockerClient,
     build_dir: Path,
+    timeout: int = 360,
     logger: logging.Logger | None = None,
     nocache: bool = False,
 ):
@@ -133,6 +134,7 @@ def build_image(
             path=str(build_dir),
             tag=image_name,
             rm=True,
+            timeout=timeout,
             forcerm=True,
             decode=True,
             platform=platform,
@@ -311,8 +313,9 @@ def build_env_images(
 def build_env_image(
     test_spec: TestSpec,
     client: docker.DockerClient,
-    logger: logging.Logger | None,
-    nocache: bool,
+    timeout: int = 360,
+    logger: logging.Logger | None = None,
+    nocache: bool = False,
 ):
     """
     Builds a single environment image if it does not already exist.
@@ -359,6 +362,7 @@ def build_env_image(
             platform=test_spec.platform,
             client=client,
             build_dir=build_dir,
+            timeout=timeout,
             logger=logger,
             nocache=nocache,
         )
