@@ -6,7 +6,10 @@ from argparse import ArgumentParser
 from swebench.harness.constants import KEY_INSTANCE_ID
 from swebench.harness.docker_build import build_instance_images
 from swebench.harness.docker_utils import list_images
-from swebench.harness.test_spec.test_spec import make_test_spec
+from swebench.harness.test_spec.test_spec import (
+    get_test_specs_from_dataset,
+    make_test_spec,
+)
 from swebench.harness.utils import load_swebench_dataset, str2bool
 
 
@@ -16,7 +19,7 @@ def filter_dataset_to_build(
     client: docker.DockerClient,
     force_rebuild: bool,
     namespace: str = None,
-    tag: str = None,
+    instance_image_tag: str = None,
 ):
     """
     Filter the dataset to only include instances that need to be built.
@@ -47,7 +50,7 @@ def filter_dataset_to_build(
             continue
 
         # Check if the instance needs to be built (based on force_rebuild flag and existing images)
-        spec = make_test_spec(instance, namespace=namespace, instance_image_tag=tag)
+        spec = make_test_spec(instance, namespace=namespace, instance_image_tag=instance_image_tag)
         if force_rebuild:
             data_to_build.append(instance)
         elif spec.instance_image_key not in existing_images:
@@ -64,7 +67,7 @@ def main(
     force_rebuild,
     open_file_limit,
     namespace,
-    tag,
+    instance_image_tag,
 ):
     """
     Build Docker images for the specified instances.
@@ -82,17 +85,18 @@ def main(
     # Filter out instances that were not specified
     dataset = load_swebench_dataset(dataset_name, split)
     dataset = filter_dataset_to_build(
-        dataset, instance_ids, client, force_rebuild, namespace, tag
+        dataset, instance_ids, client, force_rebuild, namespace, instance_image_tag
     )
+
+    # make test specs
+    test_specs = get_test_specs_from_dataset(dataset, max_workers, namespace, instance_image_tag)
 
     # Build images for remaining instances
     successful, failed = build_instance_images(
+        test_specs=test_specs,
         client=client,
-        dataset=dataset,
         force_rebuild=force_rebuild,
         max_workers=max_workers,
-        namespace=namespace,
-        tag=tag,
     )
     print(f"Successfully built {len(successful)} images")
     print(f"Failed to build {len(failed)} images")

@@ -151,7 +151,7 @@ def get_test_specs_from_dataset(
     instance_image_tag: str = LATEST,
 ) -> list[TestSpec]:
     """
-    Idempotent function that converts a list of SWEbenchInstance objects to a list of TestSpec objects.
+    Idempotent function that converts a list of SWEbenchInstance objects to a list of TestSpec.
     Uses parallel processing for better performance with large datasets.
     """
     if isinstance(dataset[0], TestSpec):
@@ -163,10 +163,13 @@ def get_test_specs_from_dataset(
         for instance in instances
     ]
     
+    print(f"Making {len(instances)} TestSpecs ...")
     successful, failed = run_threadpool(make_test_spec, payloads, max_workers)
     
     if failed:
-        raise Exception(f"Failed to create TestSpec for {len(failed)} instances")
+        raise Exception(f"Failed to make TestSpec for {len(failed)} instances")
+    
+    print(f"Successfully made {len(successful)} TestSpecs")
 
     return successful
 

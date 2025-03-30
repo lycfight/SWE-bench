@@ -170,18 +170,17 @@ def build_image(
 
 
 def build_base_images(
-    client: docker.DockerClient, dataset: list, max_workers: int = 4, force_rebuild: bool = False
+    client: docker.DockerClient, test_specs: list, force_rebuild: bool = False
 ):
     """
     Builds the base images required for the dataset if they do not already exist.
 
     Args:
         client (docker.DockerClient): Docker client to use for building the images
-        dataset (list): List of test specs or dataset to build images for
+        test_specs (list): List of test specs to build images for
         force_rebuild (bool): Whether to force rebuild the images even if they already exist
     """
     # Get the base images to build from the dataset
-    test_specs = get_test_specs_from_dataset(dataset, max_workers)
     base_images = {
         x.base_image_key: (x.base_dockerfile, x.platform) for x in test_specs
     }
@@ -214,8 +213,7 @@ def build_base_images(
 
 def get_env_configs_to_build(
     client: docker.DockerClient,
-    dataset: list,
-    max_workers: int = 4,
+    test_specs: list,
 ):
     """
     Returns a dictionary of image names to build scripts and dockerfiles for environment images.
@@ -223,11 +221,10 @@ def get_env_configs_to_build(
 
     Args:
         client (docker.DockerClient): Docker client to use for building the images
-        dataset (list): List of test specs or dataset to build images for
+        test_specs (list): List of test specs to build images for
     """
     image_scripts = dict()
     base_images = dict()
-    test_specs = get_test_specs_from_dataset(dataset, max_workers)
 
     for test_spec in test_specs:
         # Check if the base image exists
@@ -262,7 +259,7 @@ def get_env_configs_to_build(
 
 def build_env_images(
     client: docker.DockerClient,
-    dataset: list,
+    test_specs: list,
     force_rebuild: bool = False,
     max_workers: int = 4,
 ):
@@ -271,17 +268,17 @@ def build_env_images(
 
     Args:
         client (docker.DockerClient): Docker client to use for building the images
-        dataset (list): List of test specs or dataset to build images for
+        test_specs (list): List of test specs to build images for
         force_rebuild (bool): Whether to force rebuild the images even if they already exist
         max_workers (int): Maximum number of workers to use for building images
     """
     # Get the environment images to build from the dataset
     if force_rebuild:
-        env_image_keys = {x.env_image_key for x in get_test_specs_from_dataset(dataset, max_workers)}
+        env_image_keys = {x.env_image_key for x in test_specs}
         for key in env_image_keys:
             remove_image(client, key, "quiet")
-    build_base_images(client, dataset, max_workers, force_rebuild)
-    configs_to_build = get_env_configs_to_build(client, dataset, max_workers)
+    build_base_images(client, test_specs, force_rebuild)
+    configs_to_build = get_env_configs_to_build(client, test_specs)
     if len(configs_to_build) == 0:
         print("No environment images need to be built.")
         return [], []
@@ -375,29 +372,22 @@ def build_env_image(
 
 
 def build_instance_images(
+    test_specs: list,
     client: docker.DockerClient,
-    dataset: list,
     force_rebuild: bool = False,
     max_workers: int = 4,
-    namespace: str = None,
-    tag: str = None,
 ):
     """
     Builds the instance images required for the dataset if they do not already exist.
 
     Args:
-        dataset (list): List of test specs or dataset to build images for
+        test_specs (list): List of test specs to build images for
         client (docker.DockerClient): Docker client to use for building the images
         force_rebuild (bool): Whether to force rebuild the images even if they already exist
         max_workers (int): Maximum number of workers to use for building images
     """
     # Build environment images (and base images as needed) first
-    test_specs = list(
-        map(
-            lambda x: make_test_spec(x, namespace=namespace, instance_image_tag=tag),
-            dataset,
-        )
-    )
+
     if force_rebuild:
         for spec in test_specs:
             remove_image(client, spec.instance_image_key, "quiet")
