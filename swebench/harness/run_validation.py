@@ -501,7 +501,7 @@ def main(
         dataset_name, split, instance_ids, gold_predictions, run_id, rewrite_reports
     )
     # make test specs
-    test_specs = get_test_specs_from_dataset(dataset, max_workers)
+    test_specs = get_test_specs_from_dataset(dataset, max_workers, namespace, instance_image_tag)
     # run instances locally
     if platform.system() == "Linux":
         resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
