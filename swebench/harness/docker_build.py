@@ -170,7 +170,7 @@ def build_image(
 
 
 def build_base_images(
-    client: docker.DockerClient, dataset: list, force_rebuild: bool = False
+    client: docker.DockerClient, dataset: list, max_workers: int = 1, force_rebuild: bool = False
 ):
     """
     Builds the base images required for the dataset if they do not already exist.
@@ -181,7 +181,7 @@ def build_base_images(
         force_rebuild (bool): Whether to force rebuild the images even if they already exist
     """
     # Get the base images to build from the dataset
-    test_specs = get_test_specs_from_dataset(dataset)
+    test_specs = get_test_specs_from_dataset(dataset, max_workers=1)
     base_images = {
         x.base_image_key: (x.base_dockerfile, x.platform) for x in test_specs
     }
@@ -215,6 +215,7 @@ def build_base_images(
 def get_env_configs_to_build(
     client: docker.DockerClient,
     dataset: list,
+    max_workers: int = 4,
 ):
     """
     Returns a dictionary of image names to build scripts and dockerfiles for environment images.
@@ -226,7 +227,7 @@ def get_env_configs_to_build(
     """
     image_scripts = dict()
     base_images = dict()
-    test_specs = get_test_specs_from_dataset(dataset)
+    test_specs = get_test_specs_from_dataset(dataset, max_workers)
 
     for test_spec in test_specs:
         # Check if the base image exists
@@ -276,11 +277,11 @@ def build_env_images(
     """
     # Get the environment images to build from the dataset
     if force_rebuild:
-        env_image_keys = {x.env_image_key for x in get_test_specs_from_dataset(dataset)}
+        env_image_keys = {x.env_image_key for x in get_test_specs_from_dataset(dataset, max_workers)}
         for key in env_image_keys:
             remove_image(client, key, "quiet")
-    build_base_images(client, dataset, force_rebuild)
-    configs_to_build = get_env_configs_to_build(client, dataset)
+    build_base_images(client, dataset, max_workers, force_rebuild)
+    configs_to_build = get_env_configs_to_build(client, dataset, max_workers)
     if len(configs_to_build) == 0:
         print("No environment images need to be built.")
         return [], []

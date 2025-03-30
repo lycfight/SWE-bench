@@ -306,13 +306,13 @@ def run_instances(
         timeout (int): Timeout for running tests
     """
     client = docker.from_env()
-    test_specs = list(
-        map(
-            lambda instance: make_test_spec(
-                instance, namespace=namespace, instance_image_tag=instance_image_tag
-            ),
-            instances,
-        )
+    test_specs, _ = run_threadpool(
+        make_test_spec, 
+        [
+            (instance, namespace, instance_image_tag)
+            for instance in instances
+        ], 
+        max_workers
     )
 
     # print number of existing instance images

@@ -99,8 +99,8 @@ def run_threadpool(func, payloads, max_workers):
             for future in as_completed(futures):
                 try:
                     # Update progress bar, check if instance ran successfully
-                    future.result()
-                    succeeded.append(futures[future])
+                    result = future.result()
+                    succeeded.append(result)
                 except Exception as e:
                     print(f"{type(e)}: {e}")
                     traceback.print_exc()
@@ -121,8 +121,8 @@ def run_sequential(func, args_list):
     pbar = tqdm(total=len(args_list), smoothing=0)
     for args in args_list:
         try:
-            func(*args)
-            succeeded.append(args)
+            result = func(*args)
+            succeeded.append(result)
         except Exception:
             traceback.print_exc()
             failed.append(args)

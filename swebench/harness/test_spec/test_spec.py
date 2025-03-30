@@ -25,6 +25,7 @@ from swebench.harness.test_spec.create_scripts import (
     make_env_script_list,
     make_eval_script_list,
 )
+from swebench.harness.utils import run_threadpool
 
 
 @dataclass
@@ -145,20 +146,29 @@ class TestSpec:
 
 def get_test_specs_from_dataset(
     dataset: Union[list[SWEbenchInstance], list[TestSpec]],
+    max_workers: int = 4,
     namespace: str = None,
     instance_image_tag: str = LATEST,
 ) -> list[TestSpec]:
     """
     Idempotent function that converts a list of SWEbenchInstance objects to a list of TestSpec objects.
+    Uses parallel processing for better performance with large datasets.
     """
     if isinstance(dataset[0], TestSpec):
         return cast(list[TestSpec], dataset)
-    return list(
-        map(
-            lambda x: make_test_spec(x, namespace, instance_image_tag),
-            cast(list[SWEbenchInstance], dataset),
-        )
-    )
+    
+    instances = cast(list[SWEbenchInstance], dataset)
+    payloads = [
+        (instance, namespace, instance_image_tag)
+        for instance in instances
+    ]
+    
+    successful, failed = run_threadpool(make_test_spec, payloads, max_workers)
+    
+    if failed:
+        raise Exception(f"Failed to create TestSpec for {len(failed)} instances")
+
+    return successful
 
 
 def make_test_spec(
