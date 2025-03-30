@@ -134,7 +134,7 @@ def run_instance(
     try:
         # Build + start instance container (instance image should already be built)
         container = build_container(
-            test_spec, client, run_id, logger, rm_image, force_rebuild
+            test_spec, client, run_id, timeout, logger, rm_image, force_rebuild
         )
         container.start()
         logger.info(f"Container for {instance_id} started: {container.id}")
@@ -473,7 +473,7 @@ def main(
     report_dir: str = ".",
 ):
     """
-    Run evaluation harness for the given dataset and predictions.
+    Run validation harness for the given dataset and predictions.
     """
     namespace = None if namespace == "" else namespace
 
@@ -539,7 +539,7 @@ def main(
 
 if __name__ == "__main__":
     parser = ArgumentParser(
-        description="Run evaluation harness for the given dataset and predictions.",
+        description="Run validation harness for the given dataset and predictions.",
         formatter_class=ArgumentDefaultsHelpFormatter,
     )
 

@@ -433,8 +433,9 @@ def build_instance_images(
 def build_instance_image(
     test_spec: TestSpec,
     client: docker.DockerClient,
-    logger: logging.Logger | None,
-    nocache: bool,
+    timeout: int = 360,
+    logger: logging.Logger | None = None,
+    nocache: bool = False,
 ):
     """
     Builds the instance image for the given test spec if it does not already exist.
@@ -491,6 +492,7 @@ def build_instance_image(
             dockerfile=dockerfile,
             platform=test_spec.platform,
             client=client,
+            timeout=timeout,
             build_dir=build_dir,
             nocache=nocache,
         )
@@ -505,8 +507,9 @@ def build_container(
     test_spec: TestSpec,
     client: docker.DockerClient,
     run_id: str,
-    logger: logging.Logger,
-    nocache: bool,
+    timeout: int = 360,
+    logger: logging.Logger | None = None,
+    nocache: bool = False,
     force_rebuild: bool = False,
 ):
     """
@@ -524,7 +527,7 @@ def build_container(
     if force_rebuild:
         remove_image(client, test_spec.instance_image_key, "quiet")
     if not test_spec.is_remote_image:
-        build_instance_image(test_spec, client, logger, nocache)
+        build_instance_image(test_spec, client, timeout, logger, nocache)
     else:
         try:
             client.images.get(test_spec.instance_image_key)
