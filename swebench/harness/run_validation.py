@@ -47,7 +47,6 @@ from swebench.harness.docker_build import (
 from swebench.harness.grading import get_valid_report
 from swebench.harness.test_spec.test_spec import (
     get_test_specs_from_dataset,
-    make_test_spec,
     TestSpec,
 )
 from swebench.harness.utils import (
