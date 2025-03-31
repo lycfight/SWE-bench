@@ -51,7 +51,6 @@ from swebench.harness.modal_eval import (
 )
 from swebench.harness.test_spec.test_spec import (
     get_test_specs_from_dataset,
-    make_test_spec,
     TestSpec,
 )
 from swebench.harness.utils import (
