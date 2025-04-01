@@ -408,7 +408,7 @@ def build_instance_images(
     successful, failed = list(), list()
 
     # `logger` is set to None b/c logger is created in build-instage_image
-    payloads = [(spec, client, None, False) for spec in test_specs]
+    payloads = [(spec, client, None, None, False) for spec in test_specs]
     # Build the instance images
     successful, failed = run_threadpool(build_instance_image, payloads, max_workers)
     # Show how many images failed to build

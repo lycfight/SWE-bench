@@ -130,7 +130,7 @@ if __name__ == "__main__":
         "--namespace", type=str, default=None, help="Namespace to use for the images"
     )
     parser.add_argument(
-        "--tag", type=str, default=None, help="Tag to use for the images"
+        "--instance_image_tag", type=str, default="latest", help="Tag to use for the images"
     )
     args = parser.parse_args()
     main(**vars(args))
