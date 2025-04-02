@@ -137,7 +137,7 @@ def run_instance(
     try:
         # Build + start instance container (instance image should already be built)
         container = build_container(
-            test_spec, client, run_id, None, logger, rm_image, force_rebuild
+            test_spec, client, run_id, timeout, logger, rm_image, force_rebuild
         )
         container.start()
         logger.info(f"Container for {instance_id} started: {container.id}")
@@ -273,7 +273,7 @@ def run_gold_and_empty_instance(
     rewrite_reports: bool = False,
 ):          
     # build environment image
-    build_env_image(test_spec, client, None, None, False)
+    build_env_image(test_spec, client, timeout, None, False)
     # run gold instance
     run_instance(test_spec, gold_pred, rm_image, force_rebuild, client, run_id, timeout, rewrite_reports)
     # run empty instance
