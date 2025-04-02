@@ -54,6 +54,10 @@ def push_image(instance, namespace, instance_image_tag):
         if 'error' in line:
             raise Exception(line['error'])
     
+    # Remove the image from local
+    client.images.remove(new_image_name, force=True)
+    client.images.remove(image_name, force=True)
+    
     return
 
 
