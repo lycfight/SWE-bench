@@ -5,6 +5,7 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from datasets import Dataset
 
+from swebench.harness.constants import KEY_INSTANCE_ID
 from swebench.harness.utils import (
     load_swebench_dataset,
     get_predictions_from_file,
