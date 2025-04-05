@@ -1,17 +1,17 @@
-from swebench.harness.constants import KEY_INSTANCE_ID
+import os
+import json
+from collections import defaultdict
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+
+from datasets import Dataset
+
 from swebench.harness.utils import (
     load_swebench_dataset,
     get_predictions_from_file,
     str2bool,
 )
 from swebench.harness.test_spec.test_spec import get_test_specs_from_dataset
-
 from swebench.harness.run_validation import get_dataset_from_preds
-import json
-import os
-from collections import defaultdict
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-from datasets import Dataset
 
 
 def save_dataset_by_repo(dataset):
