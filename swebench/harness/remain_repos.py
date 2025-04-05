@@ -7,11 +7,9 @@ from datasets import Dataset
 
 from swebench.harness.constants import KEY_INSTANCE_ID
 from swebench.harness.utils import (
-    load_swebench_dataset,
     get_predictions_from_file,
     str2bool,
 )
-from swebench.harness.test_spec.test_spec import get_test_specs_from_dataset
 from swebench.harness.run_validation import get_dataset_from_preds
 
 
@@ -55,8 +53,6 @@ def main(
     instance_ids: list,
     run_id: str,
     rewrite_reports: bool,
-    namespace: str,
-    instance_image_tag: str,
 ):
     # load predictions as map of instance_id to prediction
     gold_predictions = get_predictions_from_file("gold", dataset_name, split)
@@ -95,12 +91,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--run_id", type=str, required=True, help="Run ID - identifies the run"
     )
-    parser.add_argument(
-        "--namespace", type=str, default="", help="Namespace for images"
-    )
-    parser.add_argument(
-        "--instance_image_tag", type=str, default="latest", help="Instance image tag"
-    )
+
     parser.add_argument(
         "--rewrite_reports",
         type=str2bool,
