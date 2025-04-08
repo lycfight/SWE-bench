@@ -499,8 +499,7 @@ def main(
     dataset = get_dataset_from_preds(
         dataset_name, split, instance_ids, gold_predictions, run_id, rewrite_reports
     )
-    # make test specs
-    test_specs = get_test_specs_from_dataset(dataset, max_workers, namespace, instance_image_tag)
+    
     # run instances locally
     if platform.system() == "Linux":
         resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
@@ -510,6 +509,8 @@ def main(
     if not dataset:
         print("No instances to run.")
     else:
+        # make test specs
+        test_specs = get_test_specs_from_dataset(dataset, max_workers, namespace, instance_image_tag)
         # build environment images + run instances      
         if namespace is None and not rewrite_reports:
             build_base_images(client, test_specs, force_rebuild)
