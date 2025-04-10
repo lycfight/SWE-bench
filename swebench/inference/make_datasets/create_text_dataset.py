@@ -11,7 +11,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 from datasets import Dataset, DatasetDict, load_dataset, load_from_disk
 from tqdm.auto import tqdm
-
+from datetime import datetime
 from swebench.inference.make_datasets.create_instance import (
     add_text_inputs,
     PROMPT_FUNCTIONS,
@@ -111,6 +111,13 @@ def construct_output_filename(
     return output_file
 
 
+def convert_datetime_to_string(instance):
+    for key, value in instance.items():
+        if isinstance(value, datetime):
+            instance[key] = value.isoformat()
+    return instance
+
+
 def main(
     dataset_name_or_path,
     splits,
@@ -136,7 +143,7 @@ def main(
         max_context_len,
         tokenizer_name,
     )
-    output_file = Path(output_dir, output_file)
+    output_file = Path(output_dir, output_file) if output_dir else Path(output_file)
     if push_to_hub_user is None:
         if output_file.exists():
             existing_dataset = load_from_disk(output_file)
@@ -181,7 +188,7 @@ def main(
     progress_files = {}
     for split in splits:
         logger.info(f"Processing {split} split")
-        split_instances = {x["instance_id"]: x for x in dataset[split]}
+        split_instances = {x["instance_id"]: convert_datetime_to_string(x) for x in dataset[split]}
         progress_file = f"{output_file}.{split}.progress.jsonl"
         progress_files[split] = progress_file
         # Process instances and save to progress file
@@ -213,6 +220,7 @@ def main(
                 if datum["instance_id"] not in valid_instance_ids:
                     invalid_instances.append(datum["instance_id"])
                     continue
+                datum = extract_fields(datum)
                 for key in columns:
                     split_data[key].append(datum.get(key, ""))
 
@@ -238,15 +246,15 @@ def main(
     # Save dataset
     if push_to_hub_user is not None:
         final_dataset.push_to_hub(
-            f"{push_to_hub_user}/{output_file.name}", use_auth_token=hub_token
+            f"{push_to_hub_user}/{output_file.name}", token=hub_token
         )
     else:
         final_dataset.save_to_disk(output_file)
 
     # Cleanup progress files
-    for progress_file in progress_files.values():
-        if os.path.exists(progress_file):
-            os.remove(progress_file)
+    # for progress_file in progress_files.values():
+    #     if os.path.exists(progress_file):
+    #         os.remove(progress_file)
 
     logger.info(f"Finished saving to {output_file}")
 

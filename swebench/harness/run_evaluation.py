@@ -481,9 +481,6 @@ def main(
     )
     full_dataset = load_swebench_dataset(dataset_name, split, instance_ids)
 
-    # make test specs
-    test_specs = get_test_specs_from_dataset(dataset, max_workers, namespace, instance_image_tag)
-
     if modal:
         # run instances on Modal
         if not dataset:
@@ -502,6 +499,9 @@ def main(
     if not dataset:
         print("No instances to run.")
     else:
+        # make test specs
+        test_specs = get_test_specs_from_dataset(dataset, max_workers, namespace, instance_image_tag)
+
         # build environment images + run instances
         if namespace is None and not rewrite_reports:
             build_env_images(client, test_specs, force_rebuild)

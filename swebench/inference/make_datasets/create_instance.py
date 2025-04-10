@@ -485,9 +485,9 @@ def add_text_inputs(
                     print(f"Failed on instance {instance_id}", e)
                     traceback.print_exc()
                     # Save failed instance
-                    failed_instance = {**instance, "text_inputs": None}
-                    progress_file_handle.write(json.dumps(failed_instance) + "\n")
-                    progress_file_handle.flush()
+                    # failed_instance = {**instance, "text_inputs": None}
+                    # progress_file_handle.write(json.dumps(failed_instance) + "\n")
+                    # progress_file_handle.flush()
                 finally:
                     os.chdir(orig_dir)
         os.chdir(orig_dir)
