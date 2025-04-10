@@ -1475,6 +1475,20 @@ SPECS_PEFT = {
 
 MAP_REPO_VERSION_TO_SPECS_PY.update({"huggingface/peft": SPECS_PEFT})
 
+
+SPECS_MAKDOCS = {
+    "-1.0": {
+        "python": "3.9",
+        "install": "pip install -e .; pip install -e .[min-versions]",
+        "pip_packages": [
+            "pytest",
+            "pre-commit",
+            ],
+        "test_cmd": "python -m pytest --no-header -rA --tb=no -p no:cacheprovider",
+    },
+}
+MAP_REPO_VERSION_TO_SPECS_PY.update({"mkdocs/mkdocs": SPECS_MAKDOCS})
+
 SPECS_PLACEHOLDER = {
     "-1.0": {
         "python": "3.9",
