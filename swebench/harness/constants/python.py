@@ -1513,7 +1513,7 @@ SPECS_PLACEHOLDER = {
             "tomlkit",
             "pre-commit",
             "setuptools==65.7.0",
-            "pip==20.3.3",
+            "pip",
             '"cython<3.0.0"'
         ],
         "install": "pip install --force-reinstall -e . || true; pip install -e .[test] || true; pip install -e .[testing] || true; pip install -e .[tests] || true; pip install -e .[dev] || true",
