@@ -4,13 +4,13 @@
 <document_content>
 <p align="center">
   <a href="https://swebench.com">
-    <img src="https://raw.githubusercontent.com/Sunwood-ai-labs/SWE-bench/main/assets/figures/swellama_banner.svg" style="height: 10em" alt="Kawi the SWE-Llama" />
+    <img src="../../assets/figures/swellama_banner_nobg.svg" style="height: 10em" alt="Kawi the SWE-Llama" />
   </a>
 </p>
 
 <div align="center">
 
- | [日本語](docs/README_JP.md) | [English](https://github.com/swe-bench/SWE-bench) | [中文简体](docs/README_CN.md) | [中文繁體](docs/README_TW.md) |
+ | [日本語](README_JP.md) | [English](https://github.com/swe-bench/SWE-bench) | [中文简体](README_CN.md) | [中文繁體](README_TW.md) |
 
 </div>
 
@@ -30,12 +30,27 @@ ICLR 2024 の論文 <a href="http://swe-bench.github.io/paper.pdf">SWE-bench: Ca
 
 パブリックリーダーボードは[ウェブサイト](http://swe-bench.github.io)を、SWE-bench ベンチマークの最新アップデート情報は [change log](https://github.com/swe-bench/SWE-bench/blob/master/CHANGELOG.md) を参照してください。
 
+## 🔍 関連プロジェクト
+
+SWE-benchエコシステムの他のプロジェクトもチェックしてください！
+<div style="text-align:center">
+    <a href="https://swe-agent.com">
+        <img src="../../assets/icons/swe-agent-button.svg" alt="SWE-agent" style="max-height: 5em; border: 2px solid rgb(0, 0, 0); border-radius: 5px; padding: 5px;"/>
+    </a>
+    <a href="https://swe-rex.com">
+        <img src="../../assets/icons/swe-rex-button.svg" alt="SWE-rex" style="max-height: 5em; border: 2px solid rgb(0, 0, 0); border-radius: 5px; padding: 5px;"/>
+    </a>
+    <a href="https://swebench.com/sb-cli">
+        <img src="../../assets/icons/sb-cli-button.svg" alt="SWE-bench CLI" style="max-height: 5em; border: 2px solid rgb(0, 0, 0); border-radius: 5px; padding: 5px;"/>
+    </a>
+</div>
+
 ## 👋 概要
 
 SWE-benchは、GitHubから収集した実世界のソフトウェア問題に対する大規模言語モデルの評価のためのベンチマークです。
 *コードベース*と*課題*が与えられ、言語モデルは記述された問題を解決する*パッチ*を生成することが求められます。
 
-<img src="../assets/figures/teaser.png">
+<img src="../../assets/figures/teaser.png">
 
 SWE-benchにアクセスするには、以下のコードをコピーして実行してください：
 ```python
