@@ -2,9 +2,9 @@
 
 # 设置基础目录
 BASE_DIR=${1:-"/root/SWE-bench/remain_repos"}
-RUN_ID=${2:-"0408"}
+RUN_ID=${2:-"0418"}
 MAX_WORKERS=${3:-8}
-TIMEOUT=${4:-1200}
+TIMEOUT=${4:-3600}
 
 # 遍历目录下的所有.jsonl文件
 for file in ${BASE_DIR}/*.jsonl; do

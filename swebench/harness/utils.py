@@ -16,6 +16,7 @@ from swebench.harness.constants import (
     KEY_MODEL,
     KEY_PREDICTION,
 )
+from swebench.inference.make_datasets.utils import repair_patch
 from unidiff import PatchSet
 
 load_dotenv()
@@ -44,7 +45,7 @@ def get_predictions_from_file(predictions_path: str, dataset_name: str, split: s
         return [
             {
                 KEY_INSTANCE_ID: datum[KEY_INSTANCE_ID],
-                KEY_PREDICTION: datum["patch"],
+                KEY_PREDICTION: patch_refine(datum["patch"]),
                 KEY_MODEL: "gold",
             }
             for datum in dataset
@@ -83,7 +84,7 @@ def get_predictions_from_file(predictions_path: str, dataset_name: str, split: s
             raise ValueError(f"Each prediction must be a dictionary, got {type(pred)}")
         if KEY_INSTANCE_ID not in pred:
             raise ValueError(f"Each prediction must contain '{KEY_INSTANCE_ID}'")
-
+        pred[KEY_PREDICTION] = patch_refine(pred[KEY_PREDICTION])
     return predictions
 
 
@@ -344,3 +345,76 @@ def ansi_escape(text: str) -> str:
     Remove ANSI escape sequences from text
     """
     return re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])").sub("", text)
+
+    
+def process_git_patch(patch):
+    if not isinstance(patch, str):
+        return ''
+
+    if not patch.strip():
+        # skip empty patches
+        return ''
+
+    patch = patch.replace('\r\n', '\n')
+    # There might be some weird characters at the beginning of the patch
+    # due to some OpenHands inference command outputs
+
+    # FOR EXAMPLE:
+    # git diff --no-color --cached 895f28f9cbed817c00ab68770433170d83132d90
+    # [A[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[K0
+    # diff --git a/django/db/models/sql/.backup.query.py b/django/db/models/sql/.backup.query.py
+    # new file mode 100644
+    # index 0000000000..fc13db5948
+
+    # We "find" the first line that starts with "diff" and then we remove lines before it
+    lines = patch.split('\n')
+    for i, line in enumerate(lines):
+        if line.startswith('diff --git'):
+            patch = '\n'.join(lines[i:])
+            break
+
+    patch = patch.rstrip() + '\n'  # Make sure the last line ends with a newline
+    return patch
+
+
+def remove_binary_diffs(patch_text):
+    """
+    Remove binary file diffs from a git patch.
+
+    Args:
+        patch_text (str): The git patch text
+
+    Returns:
+        str: The cleaned patch text with binary diffs removed
+    """
+    lines = patch_text.splitlines()
+    cleaned_lines = []
+    block = []
+    is_binary_block = False
+
+    for line in lines:
+        if line.startswith('diff --git '):
+            if block and not is_binary_block:
+                cleaned_lines.extend(block)
+            block = [line]
+            is_binary_block = False
+        elif 'Binary files' in line:
+            is_binary_block = True
+            block.append(line)
+        else:
+            block.append(line)
+
+    if block and not is_binary_block:
+        cleaned_lines.extend(block)
+    return '\n'.join(cleaned_lines)
+
+
+def patch_refine(patch):
+    """
+    Refine the patch to remove binary diffs and other non-text diffs
+    """
+    if patch:
+        patch = repair_patch(patch)
+        patch = remove_binary_diffs(patch)
+        patch = process_git_patch(patch)
+    return patch
