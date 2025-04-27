@@ -253,7 +253,7 @@ def extract_minimal_patch(model_patch):
     new_patch = ""
     for patch in PATCH_PATTERN.findall(model_patch):
         total_delta = 0
-        patch_header = PATCH_FILE_PATTERN.findall(patch)[0]
+        patch_header = PATCH_FILE_PATTERN.findall(patch)[0] if PATCH_FILE_PATTERN.findall(patch) else None
         if patch_header:
             new_patch += patch_header + "\n"
         for hunk in PATCH_HUNK_PATTERN.findall(patch):
@@ -414,7 +414,8 @@ def patch_refine(patch):
     Refine the patch to remove binary diffs and other non-text diffs
     """
     if patch:
-        patch = repair_patch(patch)
-        patch = remove_binary_diffs(patch)
-        patch = process_git_patch(patch)
+        # patch = repair_patch(patch)
+        # patch = extract_minimal_patch(patch)
+        patch = process_git_patch(remove_binary_diffs(patch))
+        
     return patch
